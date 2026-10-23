@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Frame Launcher v0.3</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html{font-size:1.5625vw}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#101315;color:#f4f1e9;font-family:"Segoe UI",Roboto,Arial,sans-serif}
+#bg{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 10%,#34403f 0%,#1b2326 45%,#101315 100%);background-size:cover;background-position:center;transition:background .2s}
+#bg:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.26),transparent 70%);pointer-events:none}
+body.light{color:#191c20}body.light #bg:after{background:linear-gradient(90deg,rgba(255,255,255,.18),transparent 70%)}
+#clock{position:absolute;left:4rem;top:3rem;text-shadow:0 2px 18px #0005}#t{font-size:5rem;font-weight:200;letter-spacing:-.03em;line-height:1}#d{display:block;margin-top:.6rem;font-size:1.1rem;opacity:.8}
+#dock{position:absolute;left:0;bottom:4.5rem;padding-left:4rem;white-space:nowrap;transition:transform .22s}
+.tile{display:inline-block;width:9rem;margin-right:.8rem;text-align:center;vertical-align:top;opacity:.72;transition:transform .15s,opacity .15s;white-space:normal}
+.tile.f{opacity:1;transform:scale(1.09)}.ic{width:5rem;height:5rem;margin:0 auto .65rem;border-radius:1rem;background:rgba(255,255,255,.12);overflow:hidden;line-height:5rem;font-size:2.2rem;font-weight:300;box-shadow:0 .6rem 1.5rem #0002}
+.ic img{width:100%;height:100%;display:block;object-fit:contain}.nm{font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 6px #0008}
+.bannerMode .tile{width:12rem}.bannerMode .ic{width:11rem;height:5.8rem;border-radius:.65rem}.bannerMode .ic img{object-fit:cover}
+.noicons .ic{display:none}.nonames .nm{display:none}.listMode #dock{top:13rem;bottom:2.5rem;right:4rem;left:4rem;padding:0;white-space:normal;overflow:auto}
+.listMode .tile{display:flex;width:100%;height:3.5rem;align-items:center;text-align:left;margin:.25rem 0;gap:1rem;padding:.3rem .8rem;border-radius:.7rem}
+.listMode .tile.f{background:rgba(255,255,255,.2);transform:none}.listMode .ic{width:2.5rem;height:2.5rem;line-height:2.5rem;margin:0;font-size:1.2rem;flex-shrink:0}.listMode .nm{font-size:1rem}
+.glass #dock,.glass .panel,.glass #all{background:rgba(22,27,32,.38);border:1px solid rgba(255,255,255,.18);box-shadow:0 1rem 3rem #0002}
+.glass #dock{padding-top:1rem;padding-bottom:1rem;border-radius:1.2rem;margin-left:1.5rem}
+#all{display:none;position:absolute;left:4rem;right:4rem;top:3rem;bottom:3.5rem;padding:1.5rem;border-radius:1rem}
+#all h1,.panel h1{margin:0 0 1rem;font-size:1.6rem;font-weight:300}#grid{height:calc(100% - 3rem);overflow:auto}
+#grid .tile{margin-bottom:1.2rem}#hint{position:absolute;left:4rem;bottom:1.1rem;font-size:.8rem;opacity:.8;text-shadow:0 1px 4px #000}
+.panel{display:none;position:absolute;inset:2rem 3rem 2rem 3rem;padding:1.5rem 2rem;border-radius:1.2rem;background:rgba(20,25,29,.94);border:1px solid #ffffff26;overflow:auto;box-shadow:0 1rem 4rem #0006}
+.panel h1{font-size:1.8rem}.section{margin:1rem 0}.section h2{font-size:1rem;font-weight:500;opacity:.7;margin:.4rem 0 .7rem}
+.options{display:flex;gap:.6rem;flex-wrap:wrap}.opt{border:1px solid #ffffff30;background:#ffffff0b;color:inherit;padding:.65rem 1rem;border-radius:.55rem;font-size:.9rem}.opt.sel{border-color:#d9c58b;background:#d9c58b22}.opt:focus,.wall:focus{outline:3px solid #e8d18e;outline-offset:2px}
+.wall{width:8rem;height:4.5rem;border-radius:.5rem;border:2px solid transparent;background-size:cover;background-position:center}.wall.sel{border-color:#e8d18e}.wallwrap{display:flex;flex-wrap:wrap;gap:.6rem}
+.rowitem{display:flex;align-items:center;gap:1rem;padding:.55rem .7rem;margin:.3rem 0;border-radius:.5rem;background:#ffffff0a}.rowitem .appname{flex:1}.small{padding:.35rem .65rem}
+#toast{position:absolute;right:2rem;bottom:1.5rem;background:#111d;color:#fff;padding:.6rem 1rem;border-radius:.5rem;display:none}
+</style></head><body>
+<div id="bg"></div><div id="clock"><div id="t"></div><span id="d"></span></div>
+<div id="dock"></div><div id="all"><h1>All apps</h1><div id="grid"></div></div>
+<div id="settings" class="panel"><h1>Settings</h1><div id="settingsBody"></div></div>
+<div id="manage" class="panel"><h1>Reorder home apps</h1><div id="manageBody"></div></div>
+<div id="hint"></div><div id="toast"></div>
+<script>
+(function(){
+var L=window.Launcher,mock=!L;if(mock){L={apps:function(){var a=[];var n=['Netflix','YouTube','Jellyfin','Kodi','VLC','Plex','Tubi','Pluto TV','Downloader','Prime Video','Disney+','Max','Music','Photos'];for(var i=0;i<n.length;i++)a.push({p:'mock.'+i,n:n[i]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')}}}
+var PREF=['com.netflix.ninja','com.amazon.firebat','com.amazon.firetv.youtube','com.amazon.avod','org.jellyfin.androidtv','com.teamsmart.videomanager.tv','org.xbmc.kodi','org.videolan.vlc','com.plexapp.android','com.esaba.downloader','mock.0','mock.1','mock.2','mock.3','mock.4'];
+var wallpapers=[
+['Wallpaper 1','wallpapers/wallpaper-01.jpg'],
+['Wallpaper 2','wallpapers/wallpaper-02.jpg'],
+['Wallpaper 3','wallpapers/wallpaper-03.jpg'],
+['Wallpaper 4','wallpapers/wallpaper-04.jpg'],
+['Wallpaper 5','wallpapers/wallpaper-05.jpg'],
+['Wallpaper 6','wallpapers/wallpaper-06.jpg'],
+['Wallpaper 7','wallpapers/wallpaper-07.jpg'],
+['Wallpaper 8','wallpapers/wallpaper-08.jpg'],
+['Wallpaper 9','wallpapers/wallpaper-09.jpg'],
+['Wallpaper 10','wallpapers/wallpaper-10.jpg'],
+['Wallpaper 11','wallpapers/wallpaper-11.jpg'],
+['Wallpaper 12','wallpapers/wallpaper-12.jpg'],
+['Wallpaper 13','wallpapers/wallpaper-13.jpg'],
+['Wallpaper 14','wallpapers/wallpaper-14.jpg'],
+['Wallpaper 15','wallpapers/wallpaper-15.jpg']
+];
+var apps=[],icons={},banners={},pins=[],mode='dock',di=0,ai=0,screen='home',settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110},manageIndex=0;
+function $(i){return document.getElementById(i)}function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function load(){try{pins=JSON.parse(localStorage.getItem('pins')||'null');var s=JSON.parse(localStorage.getItem('frameSettings')||'null');if(s)for(var k in s)settings[k]=s[k]}catch(e){pins=null}if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0}
+function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings))}catch(e){}}
+function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
+window.refreshApps=function(){try{apps=JSON.parse(L.apps())}catch(e){apps=[]}apps.sort(function(a,b){return a.n.toLowerCase()<b.n.toLowerCase()?-1:1});for(var i=0;i<apps.length;i++)if(!(apps[i].p in icons))icons[apps[i].p]=L.icon(apps[i].p);if(!(apps[i].p in banners))try{banners[apps[i].p]=L.banner?L.banner(apps[i].p):''}catch(e){banners[apps[i].p]=''}
+if(!pins){pins=[];for(var j=0;j<PREF.length&&pins.length<8;j++)if(byPkg(PREF[j]))pins.push(PREF[j]);for(var k=0;k<apps.length&&pins.length<6;k++)if(pins.indexOf(apps[k].p)<0)pins.push(apps[k].p)}pins=pins.filter(byPkg);save();applyLook();render()};
+function applyLook(){var wall=wallpapers[settings.wall]||wallpapers[0];$('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wall[1]+"')";document.body.className=(settings.theme==='light'?'light ':'')+(settings.layout==='list'?'listMode ':'')+(settings.display==='icons'?'noicons ':'')+(settings.display==='names'?'nonames ':'')+(settings.display==='both'?'':'')+(settings.glass?'glass ':'')+(settings.layout==='banner'?'bannerMode':'');document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw'}
+function dockItems(){var a=[];for(var i=0;i<pins.length;i++)a.push(byPkg(pins[i]));a.push({p:'__all',n:'All apps'});a.push({p:'__settings',n:'Settings'});return a}
+function tile(a,f,pinned){var h='<div class="tile'+(f?' f':'')+'"><div class="ic">',ic=(settings.layout==='banner'&&banners[a.p])?banners[a.p]:icons[a.p];h+=ic?'<img src="data:image/png;base64,'+ic+'">':safe((a.n||'?').charAt(0));return h+'</div><div class="nm">'+(pinned?'<span style="color:#e4cf8c">★ </span>':'')+safe(a.n)+'</div></div>'}
+function render(){applyLook();var it=dockItems(),h='';di=Math.max(0,Math.min(di,it.length-1));for(var i=0;i<it.length;i++)h+=tile(it[i],screen==='home'&&mode==='dock'&&i===di,pins.indexOf(it[i].p)>=0);$('dock').innerHTML=h;$('dock').style.transform='translateX('+(-Math.max(0,di-4)*9)+'rem)';$('dock').style.display=screen==='home'&&mode==='dock'?'block':'none';$('all').style.display=screen==='home'&&mode==='all'?'block':'none';$('settings').style.display=screen==='settings'?'block':'none';$('manage').style.display=screen==='manage'?'block':'none';
+if(mode==='all'){var g='';ai=Math.max(0,Math.min(ai,apps.length-1));for(var j=0;j<apps.length;j++)g+=tile(apps[j],j===ai,pins.indexOf(apps[j].p)>=0);$('grid').innerHTML=g}
+$('hint').textContent=screen==='settings'?'↑ ↓ ← → navigate · OK select · Back return':screen==='manage'?'↑ ↓ choose · ← → reorder · Menu unpin/pin · Back return':mode==='dock'?'Menu: unpin · hold/reorder in Settings':'Menu: pin/unpin · Back: return';
+if(screen==='settings')renderSettings();if(screen==='manage')renderManage()}
+function activate(a){if(!a)return;if(a.p==='__all'){mode='all';ai=0;render()}else if(a.p==='__settings'){screen='settings';render()}else L.launch(a.p)}
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(function(){$('toast').style.display='none'},1500)}
+function choose(k,v){settings[k]=v;save();applyLook();renderSettings();render();toast('Preference saved')}
+function btn(label,action,sel){return '<button class="opt '+(sel?'sel':'')+'" data-action="'+action+'">'+label+'</button>'}
+function renderSettings(){var h='<div class="section"><h2>BACKGROUND · 15 WALLPAPERS</h2><div class="wallwrap">';for(var i=0;i<wallpapers.length;i++)h+='<button class="wall '+(settings.wall===i?'sel':'')+'" data-wall="'+i+'" title="'+wallpapers[i][0]+'" style="background-image:url(&quot;'+wallpapers[i][1]+'&quot;)"></button>';h+='</div><div style="opacity:.7;margin-top:.4rem">'+wallpapers[settings.wall][0]+'</div></div>';
+h+='<div class="section"><h2>THEME</h2><div class="options">'+btn('Dark','theme:dark',settings.theme==='dark')+btn('Light','theme:light',settings.theme==='light')+'</div></div>';
+h+='<div class="section"><h2>LAYOUT</h2><div class="options">'+btn('Dock','layout:dock',settings.layout==='dock')+btn('List','layout:list',settings.layout==='list')+btn('TV banners','layout:banner',settings.layout==='banner')+'</div></div>';
+h+='<div class="section"><h2>APP LABELS</h2><div class="options">'+btn('Icons + names','display:both',settings.display==='both')+btn('Icons only','display:icons',settings.display==='icons')+btn('Names only','display:names',settings.display==='names')+'</div></div>';
+h+='<div class="section"><h2>APPEARANCE</h2><div class="options">'+btn('Glass '+(settings.glass?'On':'Off'),'glass',settings.glass)+btn('Font −','font:-10',false)+btn('Font +','font:+10',false)+btn('Focus −','focus:-10',false)+btn('Focus +','focus:+10',false)+'</div></div>';
+h+='<div class="section"><h2>HOME APPS</h2>'+btn('Reorder / manage pinned apps','manage',false)+'</div><div class="section">'+btn('Close settings','close',false)+'</div>';$('settingsBody').innerHTML=h}
+function renderManage(){var h='<div style="opacity:.7;margin-bottom:.7rem">Select an app and use ← / → to move it. Menu toggles pinning.</div>';for(var i=0;i<pins.length;i++){var a=byPkg(pins[i]);h+='<div class="rowitem" style="'+(i===manageIndex?'outline:2px solid #d9c58b':'')+'"><span>☰</span><span class="appname">'+safe(a?a.n:pins[i])+'</span>'+btn('↑','up:'+i,false)+btn('↓','down:'+i,false)+btn('Unpin','unpin:'+i,false)+'</div>'}h+='<div class="section"><h2>ADD APPS</h2><div class="options">';for(var j=0;j<apps.length;j++)if(pins.indexOf(apps[j].p)<0)h+=btn(safe(apps[j].n),'pin:'+j,false);h+='</div></div>'+btn('Done','close',false);$('manageBody').innerHTML=h}
+function onAction(a){if(a.indexOf('wall:')===0)choose('wall',+a.split(':')[1]);else if(a.indexOf('theme:')===0)choose('theme',a.split(':')[1]);else if(a.indexOf('layout:')===0)choose('layout',a.split(':')[1]);else if(a.indexOf('display:')===0)choose('display',a.split(':')[1]);else if(a==='glass'){settings.glass=!settings.glass;save();render();toast('Appearance saved')}else if(a.indexOf('font:')===0){settings.font=Math.max(80,Math.min(130,settings.font+(a.indexOf('+')>=0?10:-10)));save();render();}else if(a.indexOf('focus:')===0){settings.focus=Math.max(90,Math.min(140,settings.focus+(a.indexOf('+')>=0?10:-10)));document.documentElement.style.setProperty('--focus',settings.focus/100);save();render()}else if(a==='manage'){screen='manage';manageIndex=0;render()}else if(a==='close'){screen='home';render()}else if(a.indexOf('up:')===0||a.indexOf('down:')===0){var p=a.split(':'),i=+p[1],j=p[0]==='up'?i-1:i+1;if(j>=0&&j<pins.length){var t=pins[i];pins[i]=pins[j];pins[j]=t;manageIndex=j;save();render()}}else if(a.indexOf('unpin:')===0){pins.splice(+a.split(':')[1],1);save();render()}else if(a.indexOf('pin:')===0){var app=apps[+a.split(':')[1]];if(app)pins.push(app.p);save();render()}}
+document.addEventListener('click',function(e){var t=e.target;while(t&&t!==document){if(t.getAttribute){var w=t.getAttribute('data-wall'),a=t.getAttribute('data-action');if(w!==null){choose('wall',+w);return}if(a){onAction(a);return}}t=t.parentNode}});
+window.onBack=function(){if(screen==='settings'||screen==='manage'){screen='home';render()}else if(mode==='all'){mode='dock';render()}};
+window.onHome=function(){screen='home';mode='dock';di=0;render()};
+window.onMenu=function(){if(screen==='manage'){if(pins.length){pins.splice(manageIndex,1);manageIndex=Math.max(0,manageIndex-1);save();render()}return}if(screen!=='home')return;if(mode==='dock'){var a=dockItems()[di];if(a&&a.p.indexOf('__')!==0){pins.splice(di,1);save();render()}}else if(apps[ai]){var p=apps[ai].p,x=pins.indexOf(p);if(x>=0)pins.splice(x,1);else pins.push(p);save();render()}};
+document.addEventListener('keydown',function(e){var k=e.keyCode;if(screen==='settings'||screen==='manage'){if(k===27||k===8){onBack();e.preventDefault();return} if(k===37||k===38||k===39||k===40){var bs=$(screen==='settings'?'settingsBody':'manageBody').querySelectorAll('button');var cur=-1;for(var bi=0;bi<bs.length;bi++)if(bs[bi]===document.activeElement)cur=bi;var step=(k===37||k===38)?-1:1;cur=(cur+step+bs.length)%bs.length;if(bs[cur])bs[cur].focus();e.preventDefault();return}if(screen==='manage'&&(k===37||k===39)){var ix=pins.indexOf(pins[manageIndex]);var nx=k===37?manageIndex-1:manageIndex+1;if(nx>=0&&nx<pins.length){var t=pins[manageIndex];pins[manageIndex]=pins[nx];pins[nx]=t;manageIndex=nx;save();render()}e.preventDefault();return}if(k===13||k===23){var el=document.activeElement;if(el&&el.click)el.click();else onBack();e.preventDefault();return}return}
+if(k===77){onMenu();e.preventDefault();return}if(k===27||k===8){if(mock)onBack();else onBack();e.preventDefault();return}
+var n=mode==='dock'?dockItems().length:apps.length,c=mode==='dock'?di:ai,d=0;if(k===37)d=-1;else if(k===39)d=1;else if(mode==='all'&&k===38)d=-6;else if(mode==='all'&&k===40)d=6;else if(k===13||k===23){activate(mode==='dock'?dockItems()[di]:apps[ai]);e.preventDefault();return}else return;e.preventDefault();c=Math.max(0,Math.min(n-1,c+d));if(mode==='dock')di=c;else ai=c;render()});
+function tick(){var n=new Date(),h=n.getHours()%12||12,m=n.getMinutes();$('t').textContent=h+':'+(m<10?'0':'')+m;$('d').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
+tick();setInterval(tick,20000);load();refreshApps();
+})();
+</script></body></html>
