@@ -12,5 +12,3 @@ It shows in the Fire TV Apps list. Home-button takeover is a separate step (see 
 - Added pin management and reordering controls.
 - Added 15 bundled gradient wallpaper presets and local preference persistence.
 - Version code/name bumped to 3 / 0.3.
-
-Wallpaper note: the supplied CleanFrame GitHub wallpaper directory could not be downloaded from this execution environment. This build therefore includes locally generated gradient presets rather than the exact CleanFrame image assets; replace the presets with the repository's licensed/credited assets when network access is available.
