@@ -1,92 +1,346 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Frame Launcher v0.3</title>
+<html><head><meta charset="utf-8"><title>Frame Launcher v0.4</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-html{font-size:1.5625vw}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#101315;color:#f4f1e9;font-family:"Segoe UI",Roboto,Arial,sans-serif}
-#bg{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 10%,#34403f 0%,#1b2326 45%,#101315 100%);background-size:cover;background-position:center;transition:background .2s}
-#bg:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.26),transparent 70%);pointer-events:none}
-body.light{color:#191c20}body.light #bg:after{background:linear-gradient(90deg,rgba(255,255,255,.18),transparent 70%)}
-#clock{position:absolute;left:4rem;top:3rem;text-shadow:0 2px 18px #0005}#t{font-size:5rem;font-weight:200;letter-spacing:-.03em;line-height:1}#d{display:block;margin-top:.6rem;font-size:1.1rem;opacity:.8}
-#dock{position:absolute;left:0;bottom:4.5rem;padding-left:4rem;white-space:nowrap;transition:transform .22s}
+html{font-size:1.5625vw}
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#101315;color:#f4f1e9;font-family:"Segoe UI",Roboto,Arial,sans-serif;--focus:1.1}
+body.light{color:#191c20}
+
+/* ---------- background + clock ---------- */
+#bg{position:fixed;left:0;top:0;right:0;bottom:0;background:radial-gradient(ellipse at 20% 10%,#34403f 0%,#1b2326 45%,#101315 100%);background-size:cover;background-position:center}
+#bg:after{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(0,0,0,.26),transparent 70%);pointer-events:none}
+body.light #bg:after{background:linear-gradient(90deg,rgba(255,255,255,.18),transparent 70%)}
+#clock{position:absolute;left:4rem;top:3rem;text-shadow:0 2px 18px #0005}
+#t{font-size:5rem;font-weight:200;letter-spacing:-.03em;line-height:1}
+#d{display:block;margin-top:.6rem;font-size:1.1rem;opacity:.8}
+/* the clock only belongs on the home screen; other screens would draw over it */
+body:not(.scr-home) #clock{display:none}
+
+/* ---------- tiles ---------- */
 .tile{display:inline-block;width:9rem;margin-right:.8rem;text-align:center;vertical-align:top;opacity:.72;transition:transform .15s,opacity .15s;white-space:normal}
-.tile.f{opacity:1;transform:scale(1.09)}.ic{width:5rem;height:5rem;margin:0 auto .65rem;border-radius:1rem;background:rgba(255,255,255,.12);overflow:hidden;line-height:5rem;font-size:2.2rem;font-weight:300;box-shadow:0 .6rem 1.5rem #0002}
-.ic img{width:100%;height:100%;display:block;object-fit:contain}.nm{font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 6px #0008}
-.bannerMode .tile{width:12rem}.bannerMode .ic{width:11rem;height:5.8rem;border-radius:.65rem}.bannerMode .ic img{object-fit:cover}
-.noicons .ic{display:none}.nonames .nm{display:none}.listMode #dock{top:13rem;bottom:2.5rem;right:4rem;left:4rem;padding:0;white-space:normal;overflow:auto}
+.tile.f{opacity:1;transform:scale(var(--focus))}
+.ic{width:5rem;height:5rem;margin:0 auto .65rem;border-radius:1rem;background:rgba(255,255,255,.12);overflow:hidden;line-height:5rem;font-size:2.2rem;font-weight:300;box-shadow:0 .6rem 1.5rem #0002}
+.ic img{width:100%;height:100%;display:block;object-fit:contain}
+.nm{font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 6px #0008}
+.bannerMode .tile{width:12rem}
+.bannerMode .ic{width:11rem;height:5.8rem;border-radius:.65rem}
+.bannerMode .ic img{object-fit:cover}
+.noicons .ic{display:none}
+.nonames .nm{display:none}
+
+/* ---------- home: dock / list ---------- */
+#dock{display:none;position:absolute;left:3rem;right:3rem;bottom:3.5rem;overflow:hidden}
+body.scr-home #dock{display:block}
+#track{position:relative;white-space:nowrap;padding:1.3rem 1.2rem;transition:transform .25s ease-out;will-change:transform}
+.listMode #dock{top:13rem;bottom:2.5rem;left:4rem;right:4rem}
+.listMode #track{white-space:normal;padding:.6rem}
 .listMode .tile{display:flex;width:100%;height:3.5rem;align-items:center;text-align:left;margin:.25rem 0;gap:1rem;padding:.3rem .8rem;border-radius:.7rem}
-.listMode .tile.f{background:rgba(255,255,255,.2);transform:none}.listMode .ic{width:2.5rem;height:2.5rem;line-height:2.5rem;margin:0;font-size:1.2rem;flex-shrink:0}.listMode .nm{font-size:1rem}
-.glass #dock,.glass .panel,.glass #all{background:rgba(22,27,32,.38);border:1px solid rgba(255,255,255,.18);box-shadow:0 1rem 3rem #0002}
-.glass #dock{padding-top:1rem;padding-bottom:1rem;border-radius:1.2rem;margin-left:1.5rem}
-#all{display:none;position:absolute;left:4rem;right:4rem;top:3rem;bottom:3.5rem;padding:1.5rem;border-radius:1rem}
-#all h1,.panel h1{margin:0 0 1rem;font-size:1.6rem;font-weight:300}#grid{height:calc(100% - 3rem);overflow:auto}
-#grid .tile{margin-bottom:1.2rem}#hint{position:absolute;left:4rem;bottom:1.1rem;font-size:.8rem;opacity:.8;text-shadow:0 1px 4px #000}
-.panel{display:none;position:absolute;inset:2rem 3rem 2rem 3rem;padding:1.5rem 2rem;border-radius:1.2rem;background:rgba(20,25,29,.94);border:1px solid #ffffff26;overflow:auto;box-shadow:0 1rem 4rem #0006}
-.panel h1{font-size:1.8rem}.section{margin:1rem 0}.section h2{font-size:1rem;font-weight:500;opacity:.7;margin:.4rem 0 .7rem}
-.options{display:flex;gap:.6rem;flex-wrap:wrap}.opt{border:1px solid #ffffff30;background:#ffffff0b;color:inherit;padding:.65rem 1rem;border-radius:.55rem;font-size:.9rem}.opt.sel{border-color:#d9c58b;background:#d9c58b22}.opt:focus,.wall:focus{outline:3px solid #e8d18e;outline-offset:2px}
-.wall{width:8rem;height:4.5rem;border-radius:.5rem;border:2px solid transparent;background-size:cover;background-position:center}.wall.sel{border-color:#e8d18e}.wallwrap{display:flex;flex-wrap:wrap;gap:.6rem}
-.rowitem{display:flex;align-items:center;gap:1rem;padding:.55rem .7rem;margin:.3rem 0;border-radius:.5rem;background:#ffffff0a}.rowitem .appname{flex:1}.small{padding:.35rem .65rem}
-#toast{position:absolute;right:2rem;bottom:1.5rem;background:#111d;color:#fff;padding:.6rem 1rem;border-radius:.5rem;display:none}
+.listMode .tile.f{background:rgba(255,255,255,.2);transform:none}
+.listMode .ic{width:2.5rem;height:2.5rem;line-height:2.5rem;margin:0;font-size:1.2rem;flex-shrink:0}
+.listMode .nm{font-size:1rem}
+body.light.listMode .tile.f{background:rgba(0,0,0,.1)}
+
+/* ---------- glass ---------- */
+.glass #dock,.glass .panel,.glass #all{background:rgba(22,27,32,.5);border:1px solid rgba(255,255,255,.18);box-shadow:0 1rem 3rem #0002}
+.glass #dock{border-radius:1.2rem}
+.glass.light #dock,.glass.light .panel,.glass.light #all{background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.1)}
+
+/* ---------- all apps ---------- */
+#all{display:none;position:absolute;left:3rem;right:3rem;top:2rem;bottom:2.6rem;border-radius:1rem;background:rgba(20,25,29,.94);border:1px solid #ffffff26;overflow:hidden}
+body.light #all{background:rgba(245,243,238,.94);border-color:#0002}
+body.scr-all #all{display:block}
+h1{margin:0;font-size:1.6rem;font-weight:300}
+#all h1,.panel h1{position:absolute;left:2rem;top:1.2rem}
+#gv{position:absolute;left:1.4rem;right:1rem;top:4.2rem;bottom:.8rem;overflow:hidden}
+#grid{position:relative;padding:.8rem .6rem;transition:transform .22s ease-out;will-change:transform}
+#grid .tile{margin-bottom:1.1rem}
+#empty{display:none;position:absolute;left:2rem;top:5rem;opacity:.7}
+
+/* ---------- settings / manage / hidden panels ---------- */
+.panel{display:none;position:absolute;left:3rem;right:3rem;top:2rem;bottom:2.6rem;border-radius:1.2rem;background:rgba(20,25,29,.94);border:1px solid #ffffff26;overflow:hidden;box-shadow:0 1rem 4rem #0006}
+body.light .panel{background:rgba(245,243,238,.96);border-color:#0002}
+body.scr-settings #settings,body.scr-manage #manage,body.scr-hidden #hiddenp{display:block}
+.pv{position:absolute;left:1.4rem;right:1.4rem;top:4.2rem;bottom:.8rem;overflow:hidden}
+.pt{position:relative;padding:6px 8px 1rem;transition:transform .22s ease-out;will-change:transform}
+.sec{margin:0 0 1.1rem}
+.sec h2,.lh{font-size:.85rem;font-weight:500;opacity:.7;margin:.2rem 0 .6rem;letter-spacing:.06em}
+.options{display:flex;gap:.6rem;flex-wrap:nowrap}
+.opt{border:1px solid #ffffff30;background:#ffffff0b;color:inherit;padding:.65rem 1rem;border-radius:.55rem;font-size:.9rem;white-space:nowrap}
+body.light .opt{border-color:#00000030;background:#0000000a}
+.opt.sel{border-color:#d9c58b;background:#d9c58b22}
+.opt.f,.wall.f,.li.f{outline:3px solid #e8d18e;outline-offset:2px}
+.ws{overflow:hidden;padding:6px}
+.wi{position:relative;display:flex;flex-wrap:nowrap;gap:.6rem;transition:transform .22s ease-out;will-change:transform}
+.wall{flex:0 0 auto;width:8rem;height:4.5rem;border-radius:.5rem;border:2px solid transparent;background-size:cover;background-position:center;background-color:#222}
+.wall.sel{border-color:#e8d18e}
+#wname{opacity:.75;margin-top:.1rem;font-size:.9rem;height:1.2rem}
+.li{display:flex;align-items:center;gap:1rem;padding:.6rem .9rem;margin:.3rem 6px;border-radius:.55rem;background:#ffffff0a;font-size:1rem}
+body.light .li{background:#0000000a}
+.li .nm2{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .tag{opacity:.6;font-size:.85rem}
+.li.g{background:#d9c58b33}
+.lh{margin:1rem 6px .4rem}
+.note{opacity:.7;margin:.2rem 6px .8rem;font-size:.95rem}
+
+/* ---------- popup + toast + hint ---------- */
+#ctx{display:none;position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5)}
+#cbox{position:absolute;left:50%;top:50%;width:22rem;margin-left:-11rem;transform:translateY(-50%);background:rgba(26,30,34,.97);color:#fff;border-radius:1.1rem;padding:1.1rem}
+#cbox h2{margin:.1rem .6rem .8rem;font-size:1.05rem;font-weight:500;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co{padding:.8rem 1rem;border-radius:.7rem;font-size:1.15rem}
+.co.f{background:rgba(255,255,255,.22)}
+#toast{position:absolute;left:50%;top:1.2rem;transform:translateX(-50%);max-width:44rem;background:#111e;color:#fff;padding:.6rem 1.2rem;border-radius:2rem;font-size:.95rem;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+#hint{position:absolute;left:3rem;bottom:.6rem;font-size:.8rem;color:#fff;background:rgba(0,0,0,.45);padding:.2rem .8rem;border-radius:1rem;white-space:nowrap}
 </style></head><body>
-<div id="bg"></div><div id="clock"><div id="t"></div><span id="d"></span></div>
-<div id="dock"></div><div id="all"><h1>All apps</h1><div id="grid"></div></div>
-<div id="settings" class="panel"><h1>Settings</h1><div id="settingsBody"></div></div>
-<div id="manage" class="panel"><h1>Reorder home apps</h1><div id="manageBody"></div></div>
+<div id="bg"></div>
+<div id="clock"><div id="t"></div><span id="d"></span></div>
+<div id="dock"><div id="track"></div></div>
+<div id="all"><h1>All apps</h1><div id="gv"><div id="grid"></div></div><div id="empty">No apps to show. Hidden apps can be restored in Settings.</div></div>
+<div id="settings" class="panel"><h1>Settings</h1><div class="pv" id="sv"><div class="pt" id="settingsBody"></div></div></div>
+<div id="manage" class="panel"><h1>Home apps</h1><div class="pv" id="mv"><div class="pt" id="manageBody"></div></div></div>
+<div id="hiddenp" class="panel"><h1>Hidden apps</h1><div class="pv" id="hv"><div class="pt" id="hiddenBody"></div></div></div>
+<div id="ctx"><div id="cbox"><h2 id="ctitle"></h2><div id="copts"></div></div></div>
 <div id="hint"></div><div id="toast"></div>
 <script>
 (function(){
-var L=window.Launcher,mock=!L;if(mock){L={apps:function(){var a=[];var n=['Netflix','YouTube','Jellyfin','Kodi','VLC','Plex','Tubi','Pluto TV','Downloader','Prime Video','Disney+','Max','Music','Photos'];for(var i=0;i<n.length;i++)a.push({p:'mock.'+i,n:n[i]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')}}}
+var L=window.Launcher,mock=!L;
+function $(i){return document.getElementById(i)}
+function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+/* ---------- browser preview stand-in for the Android bridge ---------- */
+if(mock){var MK=[['com.netflix.ninja','Netflix'],['com.amazon.firetv.youtube','YouTube'],['com.verizon.fios.tvce','Fios TV'],['org.jellyfin.androidtv','Jellyfin'],['org.xbmc.kodi','Kodi'],['org.videolan.vlc','VLC'],['com.plexapp.android','Plex'],['com.tubitv','Tubi'],['com.esaba.downloader','Downloader'],['com.amazon.firebat','Prime Video'],['com.disney.disneyplus','Disney+'],['com.amazon.cloud9','Silk Browser'],['com.amazon.bueller.photos','Photos'],['com.amazon.music.tv','Amazon Music'],['com.amazon.venezia','Appstore'],['com.amazon.tv.settings.v2','Settings'],['com.amazon.imdb.tv.android.app','Freevee']];
+ for(var q=18;q<=46;q++)MK.push(['mock.app'+q,'Sample app '+q]);
+ L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')}}}
+
 var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce'];
-var wallpapers=[
-['Alpine','wallpaper/alpine.jpg'],
-['Wallpaper 2','wallpapers/wallpaper-02.jpg'],
-['Wallpaper 3','wallpapers/wallpaper-03.jpg'],
-['Wallpaper 4','wallpapers/wallpaper-04.jpg'],
-['Wallpaper 5','wallpapers/wallpaper-05.jpg'],
-['Wallpaper 6','wallpapers/wallpaper-06.jpg'],
-['Wallpaper 7','wallpapers/wallpaper-07.jpg'],
-['Wallpaper 8','wallpapers/wallpaper-08.jpg'],
-['Wallpaper 9','wallpapers/wallpaper-09.jpg'],
-['Wallpaper 10','wallpapers/wallpaper-10.jpg'],
-['Wallpaper 11','wallpapers/wallpaper-11.jpg'],
-['Wallpaper 12','wallpapers/wallpaper-12.jpg'],
-['Wallpaper 13','wallpapers/wallpaper-13.jpg'],
-['Wallpaper 14','wallpapers/wallpaper-14.jpg'],
-['Wallpaper 15','wallpapers/wallpaper-15.jpg']
-];
-var apps=[],icons={},banners={},pins=[],mode='dock',di=0,ai=0,screen='home',settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110},manageIndex=0;
-function $(i){return document.getElementById(i)}function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function load(){try{pins=JSON.parse(localStorage.getItem('pins')||'null');var s=JSON.parse(localStorage.getItem('frameSettings')||'null');if(s)for(var k in s)settings[k]=s[k];if(localStorage.getItem('frameDefaultsVersion')!=='2'){pins=PREF.slice(0,3);settings.wall=0;localStorage.setItem('frameDefaultsVersion','2')}}catch(e){pins=null}if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0}
-function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings))}catch(e){}}
+/* Amazon apps that are never hidden automatically: still useful, or needed to reach system screens */
+var KEEP=['com.amazon.tv.settings.v2','com.amazon.venezia','com.amazon.firetv.youtube','com.amazon.firebat','com.amazon.avod','com.amazon.avod.thirdpartyclient'];
+/* file ids match app/src/main/assets/wallpaper/<id>.jpg and <id>-thumb.jpg */
+var wallpapers=[['Alpine glow','alpine'],['Misty coast','misty'],['Quiet cove','cove'],['Forest mist','forest'],['Mountain valley','valley'],['Desert stars','night'],['Blue peaks','peaks'],['Bridge at dusk','bridge'],['Sunlit ridges','ridge'],['Golden hour','golden'],['Sunlit summits','summit'],['Gold Coast dusk','goldcoast'],['Sydney Harbour','sydney'],['Amber hills','amber'],['Mint wave','mint']];
+function wallSrc(i){return 'wallpaper/'+wallpapers[i][1]+'.jpg'}
+function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
+
+/* ---------- state ---------- */
+var apps=[],vapps=[],icons={},banners={},pins=[],hidden=[],lastJson=null;
+var screen='home',di=0,ai=0,sr=0,sc=0,mi=0,hi=0,grab=false,ctx=null,rowCol=[];
+var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110};
+var hn=[],gn=[],mn=[],hln=[],mlist=[],hlist=[],offs={},homeDirty=false;
+
+function load(){
+ try{pins=JSON.parse(localStorage.getItem('pins')||'null');var s=JSON.parse(localStorage.getItem('frameSettings')||'null');if(s)for(var k in s)settings[k]=s[k];
+  if(localStorage.getItem('frameDefaultsVersion')!=='2'){pins=PREF.slice(0,3);settings.wall=0;localStorage.setItem('frameDefaultsVersion','2')}}catch(e){pins=null}
+ try{hidden=JSON.parse(localStorage.getItem('frameHidden')||'[]')||[]}catch(e){hidden=[]}
+ if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0}
+function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings));localStorage.setItem('frameHidden',JSON.stringify(hidden))}catch(e){}}
 function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
-window.refreshApps=function(){try{apps=JSON.parse(L.apps())}catch(e){apps=[]}apps.sort(function(a,b){return a.n.toLowerCase()<b.n.toLowerCase()?-1:1});for(var i=0;i<apps.length;i++){if(!(apps[i].p in icons))icons[apps[i].p]=L.icon(apps[i].p);if(!(apps[i].p in banners))try{banners[apps[i].p]=L.banner?L.banner(apps[i].p):''}catch(e){banners[apps[i].p]=''}}
-if(!pins){pins=[];for(var j=0;j<PREF.length&&pins.length<8;j++)if(byPkg(PREF[j]))pins.push(PREF[j]);for(var k=0;k<apps.length&&pins.length<6;k++)if(pins.indexOf(apps[k].p)<0)pins.push(apps[k].p)}pins=pins.filter(byPkg);save();applyLook();render()};
-function applyLook(){var wall=wallpapers[settings.wall]||wallpapers[0];$('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wall[1]+"')";document.body.className=(settings.theme==='light'?'light ':'')+(settings.layout==='list'?'listMode ':'')+(settings.display==='icons'?'noicons ':'')+(settings.display==='names'?'nonames ':'')+(settings.display==='both'?'':'')+(settings.glass?'glass ':'')+(settings.layout==='banner'?'bannerMode':'');document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw'}
+function isHidden(p){return hidden.indexOf(p)>=0}
+function recompute(){vapps=[];for(var i=0;i<apps.length;i++)if(!isHidden(apps[i].p))vapps.push(apps[i])}
+function hiddenInstalled(){var r=[];for(var i=0;i<apps.length;i++)if(isHidden(apps[i].p))r.push(apps[i]);return r}
+function isAmazon(p){return p.indexOf('com.amazon.')===0||p.indexOf('amazon.')===0}
+function hideAmazon(silent){var n=0;for(var i=0;i<apps.length;i++){var p=apps[i].p;if(isAmazon(p)&&KEEP.indexOf(p)<0&&pins.indexOf(p)<0&&!isHidden(p)){hidden.push(p);n++}}
+ save();recompute();if(!silent){rebuildAll();toast(n?'Hid '+n+' Amazon app'+(n>1?'s':''):'No more Amazon apps to hide')}return n}
+
+/* ---------- small helpers ---------- */
+function toast(s){var t=$('toast');t.textContent=s;t.style.opacity=1;clearTimeout(toast.h);toast.h=setTimeout(function(){t.style.opacity=0},2200)}
+/* Smoothly keep `el` visible inside viewport `vp` by moving `tr`. Only moves when needed (or centers).
+   Uses transforms, never native scrolling/focus, so the page itself can't be shoved around. */
+function reveal(key,vp,tr,el,horiz,center,atStart){
+ if(!el||!vp.offsetWidth)return;
+ var pos=horiz?el.offsetLeft:el.offsetTop,size=horiz?el.offsetWidth:el.offsetHeight,view=horiz?vp.clientWidth:vp.clientHeight,
+  total=horiz?tr.scrollWidth:tr.offsetHeight,cur=offs[key]||0,pad=Math.round(view*.04),off;
+ if(atStart)off=0;
+ else if(center)off=pos-(view-size)/2;
+ else if(pos-pad<cur)off=pos-pad;
+ else if(pos+size+pad>cur+view)off=pos+size+pad-view;
+ else off=cur;
+ off=Math.max(0,Math.min(off,Math.max(0,total-view)));offs[key]=off;
+ tr.style.transform=horiz?'translate3d('+(-off)+'px,0,0)':'translate3d(0,'+(-off)+'px,0)'}
+
+/* ---------- appearance ---------- */
+function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[];
+ $('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wallSrc(settings.wall)+"')";
+ if(settings.theme==='light')c.push('light');if(settings.layout==='list')c.push('listMode');if(settings.layout==='banner')c.push('bannerMode');
+ if(settings.display==='icons')c.push('noicons');if(settings.display==='names')c.push('nonames');if(settings.glass)c.push('glass');c.push('scr-'+screen);
+ document.body.className=c.join(' ');document.body.style.setProperty('--focus',settings.focus/100);
+ document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw'}
+function hints(){var h;
+ if(ctx)h='OK select · Back close';
+ else if(screen==='home')h=grab?'':(settings.layout==='list'?'↑ ↓':'← →')+' browse · OK open · Menu: unpin · reorder in Settings';
+ else if(screen==='all')h='arrows browse · OK open · Menu: pin, unpin or hide · Back return';
+ else if(screen==='settings')h='↑ ↓ change row · ← → change option · OK select · Back return';
+ else if(screen==='manage')h=grab?'↑ ↓ move · OK drop':'↑ ↓ choose · OK grab/drop or pin · Menu: unpin · Back return';
+ else h='↑ ↓ choose · OK or Menu: unhide · Back return';
+ $('hint').textContent=h}
+
+/* ---------- tiles (home dock/list and All apps) ---------- */
+function tileHtml(a,pinned){var ic=(settings.layout==='banner'&&banners[a.p])?banners[a.p]:icons[a.p],h='<div class="tile"><div class="ic">';
+ h+=ic?'<img src="data:image/png;base64,'+ic+'">':safe((a.n||'?').charAt(0));
+ return h+'</div><div class="nm">'+(pinned?'<span style="color:#e4cf8c">★ </span>':'')+safe(a.n)+'</div></div>'}
 function dockItems(){var a=[];for(var i=0;i<pins.length;i++)a.push(byPkg(pins[i]));a.push({p:'__all',n:'All apps'});a.push({p:'__settings',n:'Settings'});return a}
-function tile(a,f,pinned){var h='<div class="tile'+(f?' f':'')+'"><div class="ic">',ic=(settings.layout==='banner'&&banners[a.p])?banners[a.p]:icons[a.p];h+=ic?'<img src="data:image/png;base64,'+ic+'">':safe((a.n||'?').charAt(0));return h+'</div><div class="nm">'+(pinned?'<span style="color:#e4cf8c">★ </span>':'')+safe(a.n)+'</div></div>'}
-function render(){applyLook();var it=dockItems(),h='';di=Math.max(0,Math.min(di,it.length-1));for(var i=0;i<it.length;i++)h+=tile(it[i],screen==='home'&&mode==='dock'&&i===di,pins.indexOf(it[i].p)>=0);$('dock').innerHTML=h;$('dock').style.transform='translateX('+(-Math.max(0,di-4)*9)+'rem)';$('dock').style.display=screen==='home'&&mode==='dock'?'block':'none';$('all').style.display=screen==='home'&&mode==='all'?'block':'none';$('settings').style.display=screen==='settings'?'block':'none';$('manage').style.display=screen==='manage'?'block':'none';
-if(mode==='all'){var g='';ai=Math.max(0,Math.min(ai,apps.length-1));for(var j=0;j<apps.length;j++)g+=tile(apps[j],j===ai,pins.indexOf(apps[j].p)>=0);$('grid').innerHTML=g}
-$('hint').textContent=screen==='settings'?'↑ ↓ ← → navigate · OK select · Back return':screen==='manage'?'↑ ↓ choose · ← → reorder · Menu unpin/pin · Back return':mode==='dock'?'Menu: unpin · hold/reorder in Settings':'Menu: pin/unpin · Back: return';
-if(screen==='settings')renderSettings();if(screen==='manage')renderManage()}
-function activate(a){if(!a)return;if(a.p==='__all'){mode='all';ai=0;render()}else if(a.p==='__settings'){screen='settings';render()}else L.launch(a.p)}
-function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(function(){$('toast').style.display='none'},1500)}
-function choose(k,v){settings[k]=v;save();applyLook();renderSettings();render();toast('Preference saved')}
-function btn(label,action,sel){return '<button class="opt '+(sel?'sel':'')+'" data-action="'+action+'">'+label+'</button>'}
-function renderSettings(){var h='<div class="section"><h2>BACKGROUND · 15 WALLPAPERS</h2><div class="wallwrap">';for(var i=0;i<wallpapers.length;i++)h+='<button class="wall '+(settings.wall===i?'sel':'')+'" data-wall="'+i+'" title="'+wallpapers[i][0]+'" style="background-image:url(&quot;'+wallpapers[i][1]+'&quot;)"></button>';h+='</div><div style="opacity:.7;margin-top:.4rem">'+wallpapers[settings.wall][0]+'</div></div>';
-h+='<div class="section"><h2>THEME</h2><div class="options">'+btn('Dark','theme:dark',settings.theme==='dark')+btn('Light','theme:light',settings.theme==='light')+'</div></div>';
-h+='<div class="section"><h2>LAYOUT</h2><div class="options">'+btn('Dock','layout:dock',settings.layout==='dock')+btn('List','layout:list',settings.layout==='list')+btn('TV banners','layout:banner',settings.layout==='banner')+'</div></div>';
-h+='<div class="section"><h2>APP LABELS</h2><div class="options">'+btn('Icons + names','display:both',settings.display==='both')+btn('Icons only','display:icons',settings.display==='icons')+btn('Names only','display:names',settings.display==='names')+'</div></div>';
-h+='<div class="section"><h2>APPEARANCE</h2><div class="options">'+btn('Glass '+(settings.glass?'On':'Off'),'glass',settings.glass)+btn('Font −','font:-10',false)+btn('Font +','font:+10',false)+btn('Focus −','focus:-10',false)+btn('Focus +','focus:+10',false)+'</div></div>';
-h+='<div class="section"><h2>HOME APPS</h2>'+btn('Reorder / manage pinned apps','manage',false)+'</div><div class="section">'+btn('Close settings','close',false)+'</div>';$('settingsBody').innerHTML=h}
-function renderManage(){var h='<div style="opacity:.7;margin-bottom:.7rem">Select an app and use ← / → to move it. Menu toggles pinning.</div>';for(var i=0;i<pins.length;i++){var a=byPkg(pins[i]);h+='<div class="rowitem" style="'+(i===manageIndex?'outline:2px solid #d9c58b':'')+'"><span>☰</span><span class="appname">'+safe(a?a.n:pins[i])+'</span>'+btn('↑','up:'+i,false)+btn('↓','down:'+i,false)+btn('Unpin','unpin:'+i,false)+'</div>'}h+='<div class="section"><h2>ADD APPS</h2><div class="options">';for(var j=0;j<apps.length;j++)if(pins.indexOf(apps[j].p)<0)h+=btn(safe(apps[j].n),'pin:'+j,false);h+='</div></div>'+btn('Done','close',false);$('manageBody').innerHTML=h}
-function onAction(a){if(a.indexOf('wall:')===0)choose('wall',+a.split(':')[1]);else if(a.indexOf('theme:')===0)choose('theme',a.split(':')[1]);else if(a.indexOf('layout:')===0)choose('layout',a.split(':')[1]);else if(a.indexOf('display:')===0)choose('display',a.split(':')[1]);else if(a==='glass'){settings.glass=!settings.glass;save();render();toast('Appearance saved')}else if(a.indexOf('font:')===0){settings.font=Math.max(80,Math.min(130,settings.font+(a.indexOf('+')>=0?10:-10)));save();render();}else if(a.indexOf('focus:')===0){settings.focus=Math.max(90,Math.min(140,settings.focus+(a.indexOf('+')>=0?10:-10)));document.documentElement.style.setProperty('--focus',settings.focus/100);save();render()}else if(a==='manage'){screen='manage';manageIndex=0;render()}else if(a==='close'){screen='home';render()}else if(a.indexOf('up:')===0||a.indexOf('down:')===0){var p=a.split(':'),i=+p[1],j=p[0]==='up'?i-1:i+1;if(j>=0&&j<pins.length){var t=pins[i];pins[i]=pins[j];pins[j]=t;manageIndex=j;save();render()}}else if(a.indexOf('unpin:')===0){pins.splice(+a.split(':')[1],1);save();render()}else if(a.indexOf('pin:')===0){var app=apps[+a.split(':')[1]];if(app)pins.push(app.p);save();render()}}
-document.addEventListener('click',function(e){var t=e.target;while(t&&t!==document){if(t.getAttribute){var w=t.getAttribute('data-wall'),a=t.getAttribute('data-action');if(w!==null){choose('wall',+w);return}if(a){onAction(a);return}}t=t.parentNode}});
-window.onBack=function(){if(screen==='settings'||screen==='manage'){screen='home';render()}else if(mode==='all'){mode='dock';render()}};
-window.onHome=function(){screen='home';mode='dock';di=0;render()};
-window.onMenu=function(){if(screen==='manage'){if(pins.length){pins.splice(manageIndex,1);manageIndex=Math.max(0,manageIndex-1);save();render()}return}if(screen!=='home')return;if(mode==='dock'){var a=dockItems()[di];if(a&&a.p.indexOf('__')!==0){pins.splice(di,1);save();render()}}else if(apps[ai]){var p=apps[ai].p,x=pins.indexOf(p);if(x>=0)pins.splice(x,1);else pins.push(p);save();render()}};
-document.addEventListener('keydown',function(e){var k=e.keyCode;if(screen==='settings'||screen==='manage'){if(k===27||k===8){onBack();e.preventDefault();return} if(k===37||k===38||k===39||k===40){var bs=$(screen==='settings'?'settingsBody':'manageBody').querySelectorAll('button');var cur=-1;for(var bi=0;bi<bs.length;bi++)if(bs[bi]===document.activeElement)cur=bi;var step=(k===37||k===38)?-1:1;cur=(cur+step+bs.length)%bs.length;if(bs[cur])bs[cur].focus();e.preventDefault();return}if(screen==='manage'&&(k===37||k===39)){var ix=pins.indexOf(pins[manageIndex]);var nx=k===37?manageIndex-1:manageIndex+1;if(nx>=0&&nx<pins.length){var t=pins[manageIndex];pins[manageIndex]=pins[nx];pins[nx]=t;manageIndex=nx;save();render()}e.preventDefault();return}if(k===13||k===23){var el=document.activeElement;if(el&&el.click)el.click();else onBack();e.preventDefault();return}return}
-if(k===77){onMenu();e.preventDefault();return}if(k===27||k===8){if(mock)onBack();else onBack();e.preventDefault();return}
-var n=mode==='dock'?dockItems().length:apps.length,c=mode==='dock'?di:ai,d=0;if(k===37)d=-1;else if(k===39)d=1;else if(mode==='all'&&k===38)d=-6;else if(mode==='all'&&k===40)d=6;else if(k===13||k===23){activate(mode==='dock'?dockItems()[di]:apps[ai]);e.preventDefault();return}else return;e.preventDefault();c=Math.max(0,Math.min(n-1,c+d));if(mode==='dock')di=c;else ai=c;render()});
-function tick(){var n=new Date(),h=n.getHours()%12||12,m=n.getMinutes();$('t').textContent=h+':'+(m<10?'0':'')+m;$('d').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
-tick();setInterval(tick,20000);load();refreshApps();
+function buildHome(){var it=dockItems(),h='';for(var i=0;i<it.length;i++)h+=tileHtml(it[i],pins.indexOf(it[i].p)>=0);
+ $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));focusHome()}
+function focusHome(){for(var i=0;i<hn.length;i++)hn[i].className='tile'+(i===di?' f':'');
+ reveal('home',$('dock'),$('track'),hn[di],settings.layout!=='list',settings.layout!=='list')}
+function buildGrid(){var h='';for(var i=0;i<vapps.length;i++)h+=tileHtml(vapps[i],pins.indexOf(vapps[i].p)>=0);
+ $('grid').innerHTML=h;gn=$('grid').childNodes;ai=Math.max(0,Math.min(ai,gn.length-1));$('empty').style.display=gn.length?'none':'block';focusGrid()}
+function focusGrid(){for(var i=0;i<gn.length;i++)gn[i].className='tile'+(i===ai?' f':'');
+ reveal('grid',$('gv'),$('grid'),gn[ai],false,false,ai<cols())}
+function cols(){if(!gn.length)return 1;var y=gn[0].offsetTop,c=0;while(c<gn.length&&gn[c].offsetTop===y)c++;return Math.max(1,c)}
+
+/* ---------- settings screen: rows (up/down) of options (left/right) ---------- */
+function opt(l,a,s){return {l:l,a:a,s:s}}
+function defs(){return [
+ {t:'BACKGROUND',w:1},
+ {t:'THEME',o:[opt('Dark','theme:dark',function(){return settings.theme==='dark'}),opt('Light','theme:light',function(){return settings.theme==='light'})]},
+ {t:'LAYOUT',o:[opt('Dock','layout:dock',function(){return settings.layout==='dock'}),opt('List','layout:list',function(){return settings.layout==='list'}),opt('TV banners','layout:banner',function(){return settings.layout==='banner'})]},
+ {t:'APP LABELS',o:[opt('Icons + names','display:both',function(){return settings.display==='both'}),opt('Icons only','display:icons',function(){return settings.display==='icons'}),opt('Names only','display:names',function(){return settings.display==='names'})]},
+ {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
+ {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
+ {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
+ {t:'',o:[opt('Close settings','close')]}]}
+var sdefs=defs(),selEls=[],secEls=[],hdEls=[],wallEls=[];
+function buildSettings(){var b=$('settingsBody'),i,j,sec,o,e;b.innerHTML='';selEls=[];secEls=[];hdEls=[];wallEls=[];
+ for(i=0;i<sdefs.length;i++){var d=sdefs[i];sec=document.createElement('div');sec.className='sec';
+  var h=document.createElement('h2');sec.appendChild(h);hdEls.push(h);var row=[];
+  if(d.w){var ws=document.createElement('div');ws.className='ws';var wi=document.createElement('div');wi.className='wi';
+   for(j=0;j<wallpapers.length;j++){e=document.createElement('div');e.className='wall';e.setAttribute('data-action','wall:'+j);e.style.backgroundImage="url('"+wallThumb(j)+"')";wi.appendChild(e);row.push(e);wallEls.push(e)}
+   ws.appendChild(wi);sec.appendChild(ws);var wn=document.createElement('div');wn.id='wname';sec.appendChild(wn);d.strip=wi;d.view=ws}
+  else{o=document.createElement('div');o.className='options';
+   for(j=0;j<d.o.length;j++){e=document.createElement('div');e.className='opt';e.setAttribute('data-action',d.o[j].a);o.appendChild(e);row.push(e)}
+   sec.appendChild(o)}
+  b.appendChild(sec);selEls.push(row);secEls.push(sec);rowCol.push(d.w?settings.wall:0)}
+ refreshSettings()}
+function refreshSettings(){var i,j,d;
+ for(i=0;i<sdefs.length;i++){d=sdefs[i];hdEls[i].textContent=typeof d.t==='function'?d.t():d.t;hdEls[i].style.display=d.t===''?'none':'block';
+  if(d.w){for(j=0;j<wallEls.length;j++)wallEls[j].className='wall'+(j===settings.wall?' sel':'')}
+  else for(j=0;j<d.o.length;j++){var o=d.o[j];selEls[i][j].textContent=typeof o.l==='function'?o.l():o.l;selEls[i][j].className='opt'+(o.s&&o.s()?' sel':'')}}
+ focusSet(true)}
+function focusSet(keep){var i,j,el;
+ for(i=0;i<selEls.length;i++)for(j=0;j<selEls[i].length;j++){el=selEls[i][j];el.className=el.className.replace(/ ?\bf\b/g,'')}
+ sr=Math.max(0,Math.min(sr,sdefs.length-1));sc=Math.max(0,Math.min(sc,selEls[sr].length-1));
+ el=selEls[sr][sc];el.className+=' f';
+ if(sdefs[sr].w){reveal('wall',sdefs[sr].view,sdefs[sr].strip,el,true,false);$('wname').textContent=wallpapers[sc][0]+(sc===settings.wall?'  ·  current':'')}
+ reveal('set',$('sv'),$('settingsBody'),secEls[sr],false,false,sr===0)}
+function moveRow(dir){rowCol[sr]=sc;sr=Math.max(0,Math.min(sdefs.length-1,sr+dir));sc=Math.min(rowCol[sr]||0,selEls[sr].length-1)}
+function setKey(k){
+ if(k===38)moveRow(-1);else if(k===40)moveRow(1);
+ else if(k===37)sc=Math.max(0,sc-1);else if(k===39)sc=Math.min(selEls[sr].length-1,sc+1);
+ else if(k===13||k===23){onAction(selEls[sr][sc].getAttribute('data-action'));return true}
+ else return false;
+ focusSet();return true}
+
+/* ---------- manage pinned apps (one vertical list) ---------- */
+function buildManage(){var h='',i,k=0,a;mlist=[];
+ h+='<div class="lh">ON HOME · '+pins.length+'</div>';
+ for(i=0;i<pins.length;i++){a=byPkg(pins[i]);mlist.push({pin:true,p:pins[i]});h+='<div class="li"><span>☰</span><span class="nm2">'+safe(a?a.n:pins[i])+'</span><span class="tag">pinned</span></div>'}
+ var av=[];for(i=0;i<vapps.length;i++)if(pins.indexOf(vapps[i].p)<0)av.push(vapps[i]);
+ h+='<div class="lh">AVAILABLE · '+av.length+'</div>';
+ for(i=0;i<av.length;i++){mlist.push({pin:false,p:av[i].p});h+='<div class="li"><span>＋</span><span class="nm2">'+safe(av[i].n)+'</span><span class="tag">OK to pin</span></div>'}
+ $('manageBody').innerHTML=h;mn=$('manageBody').querySelectorAll('.li');mi=Math.max(0,Math.min(mi,mlist.length-1));focusMan()}
+function focusMan(){for(var i=0;i<mn.length;i++)mn[i].className='li'+(i===mi?' f':'')+(grab&&i===mi?' g':'');
+ reveal('man',$('mv'),$('manageBody'),mn[mi],false,false,mi===0);hints()}
+function manKey(k){var it=mlist[mi];if(!mlist.length)return false;
+ if(k===38||k===40){var d=k===38?-1:1;
+  if(grab&&it.pin){var j=mi+d;if(j>=0&&j<pins.length){var t=pins[mi];pins[mi]=pins[j];pins[j]=t;mi=j;save();homeDirty=true;buildManage()}}
+  else mi=Math.max(0,Math.min(mlist.length-1,mi+d));
+  focusMan();return true}
+ if(k===13||k===23){
+  if(it.pin){grab=!grab;focusMan()}
+  else{pins.push(it.p);save();mi=pins.length-1;homeDirty=true;buildManage();toast('Pinned to Home')}
+  return true}
+ return false}
+
+/* ---------- hidden apps ---------- */
+function buildHidden(){hlist=hiddenInstalled();var h='';
+ if(!hlist.length)h='<div class="note">Nothing is hidden. In All apps, press Menu on an app to hide it, or use Settings > Hide all Amazon apps.</div>';
+ for(var i=0;i<hlist.length;i++)h+='<div class="li"><span class="nm2">'+safe(hlist[i].n)+'</span><span class="tag">OK to unhide</span></div>';
+ $('hiddenBody').innerHTML=h;hln=$('hiddenBody').querySelectorAll('.li');hi=Math.max(0,Math.min(hi,hlist.length-1));focusHid()}
+function focusHid(){for(var i=0;i<hln.length;i++)hln[i].className='li'+(i===hi?' f':'');reveal('hid',$('hv'),$('hiddenBody'),hln[hi],false,false,hi===0)}
+function unhide(i){var a=hlist[i];if(!a)return;hidden.splice(hidden.indexOf(a.p),1);save();recompute();buildHidden();buildGrid();refreshSettings();toast(a.n+' is visible again')}
+function hidKey(k){if(k===38)hi=Math.max(0,hi-1);else if(k===40)hi=Math.min(hlist.length-1,hi+1);
+ else if(k===13||k===23){unhide(hi);return true}else return false;focusHid();return true}
+
+/* ---------- Menu-key popup in All apps ---------- */
+function openCtx(){var a=vapps[ai];if(!a)return;var pinned=pins.indexOf(a.p)>=0;
+ ctx={sel:0,p:a.p,n:a.n,o:[['pin',pinned?'Unpin from Home':'Pin to Home'],['hide','Hide this app'],['cancel','Cancel']]};
+ $('ctitle').textContent=a.n;var h='';for(var i=0;i<ctx.o.length;i++)h+='<div class="co">'+ctx.o[i][1]+'</div>';
+ $('copts').innerHTML=h;$('ctx').style.display='block';ctxFocus();hints()}
+function ctxFocus(){var c=$('copts').childNodes;for(var i=0;i<c.length;i++)c[i].className='co'+(i===ctx.sel?' f':'')}
+function closeCtx(){ctx=null;$('ctx').style.display='none';hints()}
+function ctxKey(k){
+ if(k===38)ctx.sel=Math.max(0,ctx.sel-1);else if(k===40)ctx.sel=Math.min(ctx.o.length-1,ctx.sel+1);
+ else if(k===13||k===23){var a=ctx.o[ctx.sel][0],p=ctx.p,n=ctx.n;closeCtx();
+  if(a==='pin'){var x=pins.indexOf(p);if(x>=0)pins.splice(x,1);else pins.push(p);save();buildHome();buildGrid();toast(x>=0?'Removed from Home':'Added to Home')}
+  else if(a==='hide'){var y=pins.indexOf(p);if(y>=0)pins.splice(y,1);if(!isHidden(p))hidden.push(p);save();recompute();buildHome();buildGrid();refreshSettings();toast(n+' hidden · restore in Settings > Hidden apps')}
+  return true}
+ else return false;
+ ctxFocus();return true}
+
+/* ---------- actions ---------- */
+function onAction(a){
+ if(a.indexOf('wall:')===0){settings.wall=+a.split(':')[1];save();applyLook();refreshSettings();toast('Background: '+wallpapers[settings.wall][0]);return}
+ if(a.indexOf('theme:')===0){settings.theme=a.split(':')[1]}
+ else if(a.indexOf('layout:')===0){settings.layout=a.split(':')[1];offs.home=0}
+ else if(a.indexOf('display:')===0){settings.display=a.split(':')[1]}
+ else if(a==='glass'){settings.glass=!settings.glass}
+ else if(a.indexOf('font:')===0){settings.font=Math.max(80,Math.min(130,settings.font+(a.indexOf('+')>=0?10:-10)))}
+ else if(a.indexOf('focus:')===0){settings.focus=Math.max(90,Math.min(140,settings.focus+(a.indexOf('+')>=0?10:-10)))}
+ else if(a==='manage'){grab=false;mi=0;go('manage');return}
+ else if(a==='hiddenscr'){hi=0;go('hidden');return}
+ else if(a==='amazon'){hideAmazon(false);return}
+ else if(a==='system'){try{L.settings()}catch(e){}return}
+ else if(a==='close'){go('home');return}
+ save();applyLook();rebuildAll()}
+function rebuildAll(){recompute();buildHome();buildGrid();refreshSettings();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden()}
+function go(s){screen=s;ctx=null;grab=false;$('ctx').style.display='none';applyLook();
+ if(homeDirty&&(s==='home'||s==='all')){buildHome();buildGrid();homeDirty=false}
+ if(s==='manage')buildManage();else if(s==='hidden')buildHidden();else if(s==='settings')focusSet();else if(s==='all')focusGrid();else focusHome();hints()}
+function activate(a){if(!a)return;if(a.p==='__all'){ai=0;offs.grid=0;go('all')}else if(a.p==='__settings')go('settings');else L.launch(a.p)}
+
+/* ---------- native hooks (Back / Home / Menu) ---------- */
+window.onBack=function(){
+ if(ctx){closeCtx();return}
+ if(grab){grab=false;focusMan();hints();return}
+ if(screen==='manage'||screen==='hidden')go('settings');else if(screen!=='home')go('home')};
+window.onHome=function(){di=0;offs.home=0;go('home')};
+window.onMenu=function(){
+ if(ctx){closeCtx();return}
+ if(screen==='manage'){var it=mlist[mi];if(it&&it.pin){pins.splice(pins.indexOf(it.p),1);save();grab=false;homeDirty=true;buildManage();toast('Unpinned')}return}
+ if(screen==='hidden'){unhide(hi);return}
+ if(screen==='all'){openCtx();return}
+ if(screen==='home'){var a=dockItems()[di];if(a&&a.p.indexOf('__')!==0){pins.splice(di,1);save();buildHome();buildGrid();toast('Unpinned '+a.n)}}};
+
+/* ---------- keys ---------- */
+document.addEventListener('click',function(e){var t=e.target;while(t&&t!==document){if(t.getAttribute){var a=t.getAttribute('data-action');if(a){onAction(a);return}}t=t.parentNode}});
+document.addEventListener('keydown',function(e){var k=e.keyCode,ok=false;
+ if(mock){if(k===27||k===8){onBack();e.preventDefault();return}if(k===77){onMenu();e.preventDefault();return}}
+ if(ctx)ok=ctxKey(k);
+ else if(screen==='settings')ok=setKey(k);
+ else if(screen==='manage')ok=manKey(k);
+ else if(screen==='hidden')ok=hidKey(k);
+ else if(screen==='all'){var c=cols(),n=gn.length,o=ai;
+  if(k===37)ai=Math.max(0,ai-1);else if(k===39)ai=Math.min(n-1,ai+1);
+  else if(k===38)ai=Math.max(0,ai-c);else if(k===40)ai=Math.min(n-1,ai+c);
+  else if(k===13||k===23){if(vapps[ai])L.launch(vapps[ai].p)}else ok=null;
+  if(ok!==null){ok=true;if(ai!==o)focusGrid()}else ok=false}
+ else{var list=settings.layout==='list',prev=list?38:37,next=list?40:39;
+  if(k===prev){di=Math.max(0,di-1);focusHome();ok=true}else if(k===next){di=Math.min(hn.length-1,di+1);focusHome();ok=true}
+  else if(k===13||k===23){activate(dockItems()[di]);ok=true}}
+ if(ok)e.preventDefault()});
+
+/* ---------- apps + clock ---------- */
+window.refreshApps=function(){var s;try{s=L.apps()}catch(e){s='[]'}
+ if(s===lastJson)return;lastJson=s;
+ try{apps=JSON.parse(s)}catch(e){apps=[]}
+ apps.sort(function(a,b){return a.n.toLowerCase()<b.n.toLowerCase()?-1:1});
+ for(var i=0;i<apps.length;i++){if(!(apps[i].p in icons))icons[apps[i].p]=L.icon(apps[i].p);if(!(apps[i].p in banners))try{banners[apps[i].p]=L.banner?L.banner(apps[i].p):''}catch(e){banners[apps[i].p]=''}}
+ if(!pins){pins=[];for(var j=0;j<PREF.length&&pins.length<8;j++)if(byPkg(PREF[j]))pins.push(PREF[j]);for(var k=0;k<apps.length&&pins.length<6;k++)if(pins.indexOf(apps[k].p)<0)pins.push(apps[k].p)}
+ pins=pins.filter(byPkg);
+ try{if(apps.length&&!localStorage.getItem('frameHideV1')){hideAmazon(true);localStorage.setItem('frameHideV1','1')}}catch(e){}
+ save();recompute();applyLook();buildHome();buildGrid();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden();refreshSettings();hints()};
+function tick(){var n=new Date(),h=n.getHours()%12||12,m=n.getMinutes();$('t').textContent=h+':'+(m<10?'0':'')+m;
+ $('d').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
+tick();setInterval(tick,20000);load();buildSettings();refreshApps();
+window.onresize=function(){focusHome()};
 })();
 </script></body></html>
