@@ -6,8 +6,8 @@ android {
         applicationId 'com.example.framelauncher'
         minSdk 22
         targetSdk 28   // Fire OS 7 = Android 9; avoids package-visibility limits
-        versionCode 3
-        versionName '0.3'
+        versionCode 4
+        versionName '0.4'
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }
