@@ -25,7 +25,8 @@ body:not(.scr-home) #clock{display:none}
 .nm{font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 1px 6px #0008}
 .bannerMode .tile{width:12rem}
 .bannerMode .ic{width:11rem;height:5.8rem;border-radius:.65rem}
-.bannerMode .ic img{object-fit:cover}
+.bannerMode .ic img.bn{object-fit:cover}
+.bannerMode .ic img.ico{object-fit:contain;padding:.45rem;box-sizing:border-box}
 .noicons .ic{display:none}
 .nonames .nm{display:none}
 
@@ -173,16 +174,29 @@ function hints(){var h;
  $('hint').textContent=h}
 
 /* ---------- tiles (home dock/list and All apps) ---------- */
-function tileHtml(a,pinned){var ic=(settings.layout==='banner'&&banners[a.p])?banners[a.p]:icons[a.p],h='<div class="tile"><div class="ic">';
- h+=ic?'<img src="data:image/png;base64,'+ic+'">':safe((a.n||'?').charAt(0));
- return h+'</div><div class="nm">'+(pinned?'<span style="color:#e4cf8c">★ </span>':'')+safe(a.n)+'</div></div>'}
+function icHtml(p,n){var bn=settings.layout==='banner'&&banners[p],ic=bn||icons[p];
+ return ic?'<img class="'+(bn?'bn':'ico')+'" src="data:image/png;base64,'+ic+'">':safe((n||'?').charAt(0))}
+function tileHtml(a,pinned){
+ return '<div class="tile" data-p="'+safe(a.p)+'"><div class="ic">'+icHtml(a.p,a.n)+'</div><div class="nm">'+(pinned?'<span style="color:#e4cf8c">★ </span>':'')+safe(a.n)+'</div></div>'}
 function dockItems(){var a=[];for(var i=0;i<pins.length;i++)a.push(byPkg(pins[i]));a.push({p:'__all',n:'All apps'});a.push({p:'__settings',n:'Settings'});return a}
+/* ---------- lazy icon + banner loading ----------
+   Art is requested only when a tile is (almost) on screen. Android answers asynchronously via onArt(). */
+var asked={},ios={};
+function want(p){if(!p||p.indexOf('__')===0||asked[p])return;asked[p]=1;
+ if(L.load)try{L.load(p)}catch(e){window.onArt(p,'','')}else window.onArt(p,'','')}
+window.onArt=function(p,ic,bn){icons[p]=ic||'';banners[p]=bn||'';
+ var els=document.querySelectorAll('.tile[data-p="'+p+'"] .ic'),a=byPkg(p),i;
+ for(i=0;i<els.length;i++)els[i].innerHTML=icHtml(p,a?a.n:'')};
+function watch(key,nodes){var i;if(ios[key]){ios[key].disconnect();ios[key]=null}
+ if(!('IntersectionObserver' in window)){for(i=0;i<nodes.length;i++)want(nodes[i].getAttribute('data-p'));return}
+ ios[key]=new IntersectionObserver(function(es){for(var j=0;j<es.length;j++)if(es[j].isIntersecting){want(es[j].target.getAttribute('data-p'));ios[key].unobserve(es[j].target)}},{rootMargin:'300px'});
+ for(i=0;i<nodes.length;i++)ios[key].observe(nodes[i])}
 function buildHome(){var it=dockItems(),h='';for(var i=0;i<it.length;i++)h+=tileHtml(it[i],pins.indexOf(it[i].p)>=0);
- $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));focusHome()}
+ $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));focusHome();watch('home',hn)}
 function focusHome(){for(var i=0;i<hn.length;i++)hn[i].className='tile'+(i===di?' f':'');
  reveal('home',$('dock'),$('track'),hn[di],settings.layout!=='list',settings.layout!=='list')}
 function buildGrid(){var h='';for(var i=0;i<vapps.length;i++)h+=tileHtml(vapps[i],pins.indexOf(vapps[i].p)>=0);
- $('grid').innerHTML=h;gn=$('grid').childNodes;ai=Math.max(0,Math.min(ai,gn.length-1));$('empty').style.display=gn.length?'none':'block';focusGrid()}
+ $('grid').innerHTML=h;gn=$('grid').childNodes;ai=Math.max(0,Math.min(ai,gn.length-1));$('empty').style.display=gn.length?'none':'block';focusGrid();watch('grid',gn)}
 function focusGrid(){for(var i=0;i<gn.length;i++)gn[i].className='tile'+(i===ai?' f':'');
  reveal('grid',$('gv'),$('grid'),gn[ai],false,false,ai<cols())}
 function cols(){if(!gn.length)return 1;var y=gn[0].offsetTop,c=0;while(c<gn.length&&gn[c].offsetTop===y)c++;return Math.max(1,c)}
@@ -333,7 +347,6 @@ window.refreshApps=function(){var s;try{s=L.apps()}catch(e){s='[]'}
  if(s===lastJson)return;lastJson=s;
  try{apps=JSON.parse(s)}catch(e){apps=[]}
  apps.sort(function(a,b){return a.n.toLowerCase()<b.n.toLowerCase()?-1:1});
- for(var i=0;i<apps.length;i++){if(!(apps[i].p in icons))icons[apps[i].p]=L.icon(apps[i].p);if(!(apps[i].p in banners))try{banners[apps[i].p]=L.banner?L.banner(apps[i].p):''}catch(e){banners[apps[i].p]=''}}
  if(!pins){pins=[];for(var j=0;j<PREF.length&&pins.length<8;j++)if(byPkg(PREF[j]))pins.push(PREF[j]);for(var k=0;k<apps.length&&pins.length<6;k++)if(pins.indexOf(apps[k].p)<0)pins.push(apps[k].p)}
  pins=pins.filter(byPkg);
  try{if(apps.length&&!localStorage.getItem('frameHideV1')){hideAmazon(true);localStorage.setItem('frameHideV1','1')}}catch(e){}
