@@ -9,9 +9,10 @@ body.light{color:#191c20}
 
 /* ---------- background + clock ---------- */
 #bg{position:fixed;left:0;top:0;right:0;bottom:0;background:radial-gradient(ellipse at 20% 10%,#34403f 0%,#1b2326 45%,#101315 100%);background-size:cover;background-position:center}
-#bg:after{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(0,0,0,.26),transparent 70%);pointer-events:none}
-body.light #bg:after{background:linear-gradient(90deg,rgba(255,255,255,.18),transparent 70%)}
-#clock{position:absolute;left:4rem;top:3rem;text-shadow:0 2px 18px #0005}
+#clock{position:absolute;left:4rem;top:3rem;z-index:1;color:#f4f1e9;text-shadow:0 2px 18px #0005}
+#clock:before{content:"";position:absolute;left:-4rem;right:-4rem;top:-3rem;bottom:-3rem;z-index:-1;pointer-events:none;background:radial-gradient(ellipse closest-side at 50% 50%,rgba(0,0,0,var(--ca,0)) 0%,rgba(0,0,0,var(--ca,0)) 35%,rgba(0,0,0,0) 100%)}
+body.clk-dark #clock{color:#191c20;text-shadow:0 1px 14px #fff6}
+body.clk-dark #clock:before{background:radial-gradient(ellipse closest-side at 50% 50%,rgba(255,255,255,var(--ca,0)) 0%,rgba(255,255,255,var(--ca,0)) 35%,rgba(255,255,255,0) 100%)}
 #t{font-size:5rem;font-weight:200;letter-spacing:-.03em;line-height:1}
 #d{display:block;margin-top:.6rem;font-size:1.1rem;opacity:.8}
 /* the clock only belongs on the home screen; other screens would draw over it */
@@ -42,7 +43,14 @@ body.scr-home #dock{display:block}
 .listMode .nm{font-size:1rem}
 body.light.listMode .tile.f{background:rgba(0,0,0,.1)}
 
-/* ---------- glass ---------- */
+/* labels with Glass off sit on the bare photo, so their colour follows the photo, not the theme */
+body.lbl-light:not(.glass) #dock{color:#f4f1e9}
+body.lbl-dark:not(.glass) #dock{color:#191c20}
+body.lbl-light:not(.glass) .nm{text-shadow:0 0 .35rem #000d,0 1px .2rem #000c,0 0 1rem #0008}
+body.lbl-dark:not(.glass) .nm{text-shadow:0 0 .35rem #fffd,0 1px .2rem #fffc,0 0 1rem #fff8}
+/* ---------- glass ----------
+   Real frosted glass: JS paints the wallpaper's blurred -panel.jpg behind each panel, lined up with the photo,
+   plus a veil whose strength was measured per photo (tools/gen_catalog.py). The rules below are only a fallback. */
 .glass #dock,.glass .panel,.glass #all{background:rgba(22,27,32,.5);border:1px solid rgba(255,255,255,.18);box-shadow:0 1rem 3rem #0002}
 .glass #dock{border-radius:1.2rem}
 .glass.light #dock,.glass.light .panel,.glass.light #all{background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.1)}
@@ -102,6 +110,7 @@ body.light .li{background:#0000000a}
 <div id="hiddenp" class="panel"><h1>Hidden apps</h1><div class="pv" id="hv"><div class="pt" id="hiddenBody"></div></div></div>
 <div id="ctx"><div id="cbox"><h2 id="ctitle"></h2><div id="copts"></div></div></div>
 <div id="hint"></div><div id="toast"></div>
+<script src="wallpaper/catalog.js"></script>
 <script>
 (function(){
 var L=window.Launcher,mock=!L;
@@ -118,6 +127,8 @@ var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce
 var KEEP=['com.amazon.tv.settings.v2','com.amazon.venezia','com.amazon.firetv.youtube','com.amazon.firebat','com.amazon.avod','com.amazon.avod.thirdpartyclient'];
 /* file ids match app/src/main/assets/wallpaper/<id>.jpg and <id>-thumb.jpg */
 var wallpapers=[['Alpine glow','alpine'],['Misty coast','misty'],['Quiet cove','cove'],['Forest mist','forest'],['Mountain valley','valley'],['Desert stars','night'],['Blue peaks','peaks'],['Bridge at dusk','bridge'],['Sunlit ridges','ridge'],['Golden hour','golden'],['Sunlit summits','summit'],['Gold Coast dusk','goldcoast'],['Sydney Harbour','sydney'],['Amber hills','amber'],['Mint wave','mint']];
+var CAT={};try{var cl=window.CleanFrameWallpapers||[];for(var ci=0;ci<cl.length;ci++)CAT[cl[ci].id]=cl[ci]}catch(e){}
+function wallCat(){var w=wallpapers[settings.wall]||wallpapers[0];return CAT[w[1]]||null}
 function wallSrc(i){return 'wallpaper/'+wallpapers[i][1]+'.jpg'}
 function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
 
@@ -158,12 +169,27 @@ function reveal(key,vp,tr,el,horiz,center,atStart){
  tr.style.transform=horiz?'translate3d('+(-off)+'px,0,0)':'translate3d(0,'+(-off)+'px,0)'}
 
 /* ---------- appearance ---------- */
-function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[];
+function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[],k=CAT[w[1]]||null;
  $('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wallSrc(settings.wall)+"')";
  if(settings.theme==='light')c.push('light');if(settings.layout==='list')c.push('listMode');if(settings.layout==='banner')c.push('bannerMode');
  if(settings.display==='icons')c.push('noicons');if(settings.display==='names')c.push('nonames');if(settings.glass)c.push('glass');c.push('scr-'+screen);
+ if(k){if(k.clock==='dark')c.push('clk-dark');c.push(k.label==='dark'?'lbl-dark':'lbl-light')}
  document.body.className=c.join(' ');document.body.style.setProperty('--focus',settings.focus/100);
- document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw'}
+ document.body.style.setProperty('--ca',k?Math.min(k.clockScrim,.36):0);
+ document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw';applyFrost()}
+/* Paint the blurred wallpaper behind each visible glass surface, lined up with the full-screen photo. */
+function applyFrost(){var k=wallCat(),ids=['dock','all','settings','manage','hiddenp'],on=settings.glass&&k,i,el,r,b,key,a,rgb,veil;
+ b=$('bg').getBoundingClientRect();
+ for(i=0;i<ids.length;i++){el=$(ids[i]);
+  if(!on){el.style.backgroundImage='';el.style.backgroundSize='';el.style.backgroundPosition='';el.style.backgroundColor='';continue}
+  r=el.getBoundingClientRect();if(!r.width)continue;           // hidden screens are painted when they open
+  key=(ids[i]==='dock'&&settings.layout!=='list')?'dock':'panel';
+  a=k.veil[key][settings.theme==='light'?'light':'dark'];rgb=settings.theme==='light'?'247,245,240':'16,20,24';veil='rgba('+rgb+','+a+')';
+  el.style.backgroundColor='rgba('+rgb+',.9)';                  // shows only if the image fails to load
+  el.style.backgroundImage='linear-gradient('+veil+','+veil+'),url('+k.panel+')';
+  el.style.backgroundRepeat='no-repeat';
+  el.style.backgroundSize='100% 100%,'+b.width+'px '+b.height+'px';
+  el.style.backgroundPosition='0 0,'+(b.left-r.left-el.clientLeft)+'px '+(b.top-r.top-el.clientTop)+'px'}}
 function hints(){var h;
  if(ctx)h='OK select · Back close';
  else if(screen==='home')h=grab?'':(settings.layout==='list'?'↑ ↓':'← →')+' browse · OK open · Menu: unpin · reorder in Settings';
@@ -192,7 +218,7 @@ function watch(key,nodes){var i;if(ios[key]){ios[key].disconnect();ios[key]=null
  ios[key]=new IntersectionObserver(function(es){for(var j=0;j<es.length;j++)if(es[j].isIntersecting){want(es[j].target.getAttribute('data-p'));ios[key].unobserve(es[j].target)}},{rootMargin:'300px'});
  for(i=0;i<nodes.length;i++)ios[key].observe(nodes[i])}
 function buildHome(){var it=dockItems(),h='';for(var i=0;i<it.length;i++)h+=tileHtml(it[i],pins.indexOf(it[i].p)>=0);
- $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));focusHome();watch('home',hn)}
+ $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));focusHome();watch('home',hn);applyFrost()}   // dock height depends on its tiles, so repaint the glass now
 function focusHome(){for(var i=0;i<hn.length;i++)hn[i].className='tile'+(i===di?' f':'');
  reveal('home',$('dock'),$('track'),hn[di],settings.layout!=='list',settings.layout!=='list')}
 function buildGrid(){var h='';for(var i=0;i<vapps.length;i++)h+=tileHtml(vapps[i],pins.indexOf(vapps[i].p)>=0);
@@ -354,6 +380,6 @@ window.refreshApps=function(){var s;try{s=L.apps()}catch(e){s='[]'}
 function tick(){var n=new Date(),h=n.getHours()%12||12,m=n.getMinutes();$('t').textContent=h+':'+(m<10?'0':'')+m;
  $('d').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
 tick();setInterval(tick,20000);load();buildSettings();refreshApps();
-window.onresize=function(){focusHome()};
+window.onresize=function(){focusHome();applyFrost()};
 })();
 </script></body></html>

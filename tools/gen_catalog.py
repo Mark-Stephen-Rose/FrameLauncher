@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Measure each bundled wallpaper and write wallpaper/catalog.js.
+
+For every photo this works out, from the real pixels, how strong a frosted veil must be so text stays
+readable (WCAG-style contrast >= 4.5), and which clock / label colour reads best with no panel behind it.
+Run from the repo root after adding or replacing wallpapers:  python3 tools/gen_catalog.py
+Needs: pip install pillow numpy
+"""
+import json, os
+import numpy as np
+from PIL import Image
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+WALL = os.path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'wallpaper')
+
+# id, display name -- order is irrelevant here; index.html keeps its own order so saved choices stay valid.
+NAMES = [('alpine','Alpine glow'),('misty','Misty coast'),('cove','Quiet cove'),('forest','Forest mist'),
+ ('valley','Mountain valley'),('night','Desert stars'),('peaks','Blue peaks'),('bridge','Bridge at dusk'),
+ ('ridge','Sunlit ridges'),('golden','Golden hour'),('summit','Sunlit summits'),('goldcoast','Gold Coast dusk'),
+ ('sydney','Sydney Harbour'),('amber','Amber hills'),('mint','Mint wave')]
+
+W, H = 1280, 720           # layout reference size (1rem = 20px at 1280 wide)
+TEXT_LIGHT = np.array([244, 241, 233], float)   # body colour, dark theme
+TEXT_DARK  = np.array([25, 28, 32], float)      # body colour, light theme
+VEIL_DARK  = np.array([16, 20, 24], float)
+VEIL_LIGHT = np.array([247, 245, 240], float)
+TARGET, PCT = 4.5, 92      # 92% of the pixels behind text must reach 4.5:1
+
+def lin(c):
+    c = c / 255.0
+    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+def lum(rgb):                       # rgb (...,3) in 0..255
+    l = lin(rgb)
+    return 0.2126 * l[..., 0] + 0.7152 * l[..., 1] + 0.0722 * l[..., 2]
+
+def contrast(y1, y2):
+    a, b = np.maximum(y1, y2), np.minimum(y1, y2)
+    return (a + 0.05) / (b + 0.05)
+
+def ok(bg, text, veil=None, a=0.0):
+    """True when PCT% of pixels reach TARGET contrast for `text` after a veil of alpha `a` (browser blends in sRGB)."""
+    px = bg if veil is None else bg * (1 - a) + veil * a
+    c = contrast(lum(px), lum(text))
+    return np.percentile(c, 100 - PCT) >= TARGET
+
+def need_alpha(bg, text, veil, lo, hi):
+    a = lo
+    while a <= hi + 1e-9:
+        if ok(bg, text, veil, a): return round(a, 2)
+        a += 0.02
+    return hi
+
+def load_cover(name, suffix=''):
+    im = Image.open(os.path.join(WALL, name + suffix + '.jpg')).convert('RGB')
+    r = max(W / im.width, H / im.height)            # background-size: cover
+    im = im.resize((round(im.width * r), round(im.height * r)), Image.BILINEAR)
+    x, y = (im.width - W) // 2, (im.height - H) // 2
+    return np.asarray(im.crop((x, y, x + W, y + H)), float)
+
+def region(img, x0, y0, x1, y1):
+    return img[y0:y1, x0:x1].reshape(-1, 3)
+
+entries = []
+for wid, name in NAMES:
+    img = load_cover(wid)
+    panel = np.asarray(Image.open(os.path.join(WALL, wid + '-panel.jpg')).convert('RGB').resize((W, H), Image.BILINEAR), float)
+
+    # Clock: x 70..380, y 50..210 (4rem left, 3rem top, ~15rem x 8rem)
+    clk = region(img, 70, 50, 380, 210)
+    c_light, c_dark = ok(clk, TEXT_LIGHT), ok(clk, TEXT_DARK)
+    if c_light or not c_dark:
+        ctext, tcol, scrimc = 'light', TEXT_LIGHT, np.array([0, 0, 0], float)
+    else:
+        ctext, tcol, scrimc = 'dark', TEXT_DARK, np.array([255, 255, 255], float)
+    if c_light and c_dark: ctext, tcol, scrimc = ('light', TEXT_LIGHT, np.zeros(3)) if lum(clk).mean() < .3 else ('dark', TEXT_DARK, np.full(3, 255.))
+    cscrim = 0.0 if ok(clk, tcol) else need_alpha(clk, tcol, scrimc, 0.10, 0.60)
+
+    # App labels with glass OFF sit on the raw photo, x 60..1220, y 560..650
+    lab = region(img, 60, 560, 1220, 650)
+    lt = 'light' if (ok(lab, TEXT_LIGHT) or not ok(lab, TEXT_DARK)) else 'dark'
+    if ok(lab, TEXT_LIGHT) and ok(lab, TEXT_DARK): lt = 'light' if lum(lab).mean() < .3 else 'dark'
+
+    # Glass ON: veil over the blurred panel image behind the dock (y 458..650) and behind the big panels (y 40..668)
+    surfaces = {'dock': region(panel, 60, 458, 1220, 650), 'panel': region(panel, 60, 40, 1220, 668)}
+    glass = {}
+    for s, px in surfaces.items():
+        glass[s] = {'dark': need_alpha(px, TEXT_LIGHT, VEIL_DARK, 0.34, 0.90),
+                    'light': need_alpha(px, TEXT_DARK, VEIL_LIGHT, 0.40, 0.92)}
+    entries.append({
+        'id': wid, 'name': name, 'src': 'wallpaper/%s.jpg' % wid, 'thumb': 'wallpaper/%s-thumb.jpg' % wid,
+        'panel': 'wallpaper/%s-panel.jpg' % wid,
+        'clock': ctext, 'clockScrim': cscrim,        # clock text colour on the bare photo, plus soft scrim strength
+        'label': lt,                                  # app label colour when Glass is off
+        'veil': glass,                                # veil alpha per surface and theme when Glass is on
+        'bright': round(float(lum(panel.reshape(-1, 3)).mean()), 3)})
+
+out = os.path.join(WALL, 'catalog.js')
+with open(out, 'w') as f:
+    f.write('/* GENERATED by tools/gen_catalog.py from the real wallpaper pixels. Do not edit by hand. */\n')
+    f.write('window.CleanFrameWallpapers = ' + json.dumps(entries, indent=1) + ';\n')
+for e in entries:
+    print('%-10s bright %.2f clock %-5s scrim %.2f label %-5s dock d/l %.2f/%.2f panel d/l %.2f/%.2f' % (
+        e['id'], e['bright'], e['clock'], e['clockScrim'], e['label'], e['veil']['dock']['dark'], e['veil']['dock']['light'],
+        e['veil']['panel']['dark'], e['veil']['panel']['light']))
