@@ -22,3 +22,6 @@ It shows in the Fire TV Apps list. Home-button takeover is a separate step (see 
 - Added Settings > Fire TV system settings.
 - Focus +/- now actually changes the focus size.
 - Light theme panels are readable.
+
+## Unreleased (v0.5 in progress)
+- Load 1: icons and banners now load lazily as tiles scroll into view (off the UI thread), so the first launch no longer waits on every installed app. Banners are read from the app's launcher activity first, then the app, at the proper 320x180 TV size; apps without a banner show their icon centered instead of a cropped blur.

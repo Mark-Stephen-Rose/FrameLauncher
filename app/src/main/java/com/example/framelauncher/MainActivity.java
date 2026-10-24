@@ -18,12 +18,49 @@ import android.webkit.WebViewClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private WebView web;
+
+    /* Single background thread: art is drawn in the order the page asked for it (dock first). */
+    private final ExecutorService art = Executors.newSingleThreadExecutor();
+    private final Map<String, String[]> artCache = new HashMap<String, String[]>(); // art thread only
+
+    private String encode(Drawable d, int w, int h) {
+        Bitmap bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        d.setBounds(0, 0, w, h);
+        d.draw(new Canvas(bm));
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        bm.compress(Bitmap.CompressFormat.PNG, 90, bo);
+        bm.recycle();
+        return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+    }
+
+    private String renderIcon(String pkg) {
+        try { return encode(getPackageManager().getApplicationIcon(pkg), 128, 128); }
+        catch (Exception ex) { return ""; }
+    }
+
+    /* Many apps declare their TV banner on the launcher activity, not on the <application>. Try that first. */
+    private String renderBanner(String pkg) {
+        try {
+            PackageManager pm = getPackageManager();
+            Drawable d = null;
+            Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
+            if (i == null) i = pm.getLaunchIntentForPackage(pkg);
+            if (i != null) {
+                try { d = pm.getActivityBanner(i); } catch (Exception ignored) { }
+            }
+            if (d == null) d = pm.getApplicationBanner(pkg);
+            return d == null ? "" : encode(d, 320, 180);   // 320x180 is the Android TV banner size (16:9)
+        } catch (Exception ex) { return ""; }
+    }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -75,30 +112,18 @@ public class MainActivity extends Activity {
             } catch (Exception ex) { return "[]"; }
         }
 
-        @JavascriptInterface public String icon(String pkg) {
-            try {
-                Drawable d = getPackageManager().getApplicationIcon(pkg);
-                Bitmap bm = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888);
-                d.setBounds(0, 0, 128, 128);
-                d.draw(new Canvas(bm));
-                ByteArrayOutputStream bo = new ByteArrayOutputStream();
-                bm.compress(Bitmap.CompressFormat.PNG, 100, bo);
-                return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
-            } catch (Exception ex) { return ""; }
-        }
-
-        @JavascriptInterface public String banner(String pkg) {
-            try {
-                Drawable d = getPackageManager().getApplicationBanner(pkg);
-                if (d == null) return "";
-                Bitmap bm = Bitmap.createBitmap(440, 200, Bitmap.Config.ARGB_8888);
-                Canvas c = new Canvas(bm);
-                d.setBounds(0, 0, 440, 200);
-                d.draw(c);
-                ByteArrayOutputStream bo = new ByteArrayOutputStream();
-                bm.compress(Bitmap.CompressFormat.PNG, 90, bo);
-                return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
-            } catch (Exception ex) { return ""; }
+        /* Asynchronous: renders on a background thread, then calls window.onArt(pkg, iconB64, bannerB64). */
+        @JavascriptInterface public void load(final String pkg) {
+            art.execute(new Runnable() { public void run() {
+                String[] r = artCache.get(pkg);
+                if (r == null) {
+                    r = new String[] { renderIcon(pkg), renderBanner(pkg) };
+                    artCache.put(pkg, r);
+                }
+                final String call = "window.onArt&&onArt(" + JSONObject.quote(pkg) + ","
+                        + JSONObject.quote(r[0]) + "," + JSONObject.quote(r[1]) + ")";
+                runOnUiThread(new Runnable() { public void run() { js(call); } });
+            }});
         }
 
         @JavascriptInterface public void launch(final String pkg) {
