@@ -22,6 +22,15 @@ body.nodate #d{display:none}
 body.noclock #d{margin-top:0;font-size:1.6rem;opacity:.9}
 body.noclock.nodate #clock{display:none}
 
+/* ---------- art mode: full-screen wallpaper with a small clock ---------- */
+#art{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:60;background:#000}
+.al{position:absolute;left:0;top:0;right:0;bottom:0;background-size:cover;background-position:center;background-repeat:no-repeat}
+#al1{opacity:0;transition:opacity 2.5s ease-in-out}
+#artclock{position:absolute;color:#f4f1e9;padding:.7rem 1.3rem;border-radius:1rem;background:rgba(0,0,0,.4);text-shadow:0 1px 8px #0008;text-align:center}
+#artclock .at{font-size:2.4rem;font-weight:300;line-height:1}
+#artclock .ad{font-size:.9rem;opacity:.85;margin-top:.35rem}
+#artclock.c0{right:3rem;bottom:2.5rem}#artclock.c1{left:3rem;bottom:2.5rem}#artclock.c2{left:3rem;top:2.5rem}#artclock.c3{right:3rem;top:2.5rem}
+
 /* ---------- tiles ---------- */
 .tile{display:inline-block;width:9rem;margin-right:.8rem;text-align:center;vertical-align:top;opacity:.72;transition:transform .15s,opacity .15s;white-space:normal}
 .tile.f{opacity:1;transform:scale(var(--focus))}
@@ -117,6 +126,7 @@ body.light .li{background:#0000000a}
 <div id="manage" class="panel"><h1>Home apps</h1><div class="pv" id="mv"><div class="pt" id="manageBody"></div></div></div>
 <div id="hiddenp" class="panel"><h1>Hidden apps</h1><div class="pv" id="hv"><div class="pt" id="hiddenBody"></div></div></div>
 <div id="ctx"><div id="cbox"><h2 id="ctitle"></h2><div id="copts"></div></div></div>
+<div id="art"><div class="al" id="al0"></div><div class="al" id="al1"></div><div id="artclock" class="c0"><div class="at" id="at"></div><div class="ad" id="ad"></div></div></div>
 <div id="hint"></div><div id="toast"></div>
 <script src="wallpaper/catalog.js"></script>
 <script>
@@ -143,7 +153,7 @@ function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
 /* ---------- state ---------- */
 var apps=[],vapps=[],icons={},banners={},pins=[],hidden=[],lastJson=null;
 var screen='home',di=0,ai=0,sr=0,sc=0,mi=0,hi=0,grab=false,ctx=null,rowCol=[];
-var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom'};
+var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true};
 var hn=[],gn=[],mn=[],hln=[],mlist=[],hlist=[],offs={},homeDirty=false;
 
 function load(){
@@ -151,7 +161,8 @@ function load(){
   if(localStorage.getItem('frameDefaultsVersion')!=='2'){pins=PREF.slice(0,3);settings.wall=0;localStorage.setItem('frameDefaultsVersion','2')}}catch(e){pins=null}
  try{hidden=JSON.parse(localStorage.getItem('frameHidden')||'[]')||[]}catch(e){hidden=[]}
  if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0;
- if(['bottom','center','top'].indexOf(settings.dock)<0)settings.dock='bottom'}
+ if(['bottom','center','top'].indexOf(settings.dock)<0)settings.dock='bottom';
+ if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0}
 function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings));localStorage.setItem('frameHidden',JSON.stringify(hidden))}catch(e){}}
 function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
 function isHidden(p){return hidden.indexOf(p)>=0}
@@ -247,6 +258,8 @@ function defs(){return [
  {t:function(){return 'DOCK POSITION'+(settings.layout==='list'?' · not used by the List layout':'')},o:[opt('Bottom','dock:bottom',function(){return settings.dock==='bottom'}),opt('Center','dock:center',function(){return settings.dock==='center'}),opt('Top','dock:top',function(){return settings.dock==='top'})]},
  {t:'APP LABELS',o:[opt('Icons + names','display:both',function(){return settings.display==='both'}),opt('Icons only','display:icons',function(){return settings.display==='icons'}),opt('Names only','display:names',function(){return settings.display==='names'})]},
  {t:'CLOCK',o:[opt('12-hour','clock:12',function(){return !settings.clock24}),opt('24-hour','clock:24',function(){return settings.clock24}),opt(function(){return 'Clock '+(settings.showClock?'On':'Off')},'showclock',function(){return settings.showClock}),opt(function(){return 'Date '+(settings.showDate?'On':'Off')},'showdate',function(){return settings.showDate})]},
+ {t:function(){return 'ART MODE · '+(settings.artIdle?'starts after '+settings.artIdle+' min idle':'off')},o:[opt('Off','artidle:0',function(){return !settings.artIdle}),opt('2 min','artidle:2',function(){return settings.artIdle===2}),opt('5 min','artidle:5',function(){return settings.artIdle===5}),opt('10 min','artidle:10',function(){return settings.artIdle===10}),opt('Start now','artnow')]},
+ {t:'ART STYLE',o:[opt('Still photo','artshow:0',function(){return !settings.artShow}),opt('Slideshow 30 s','artshow:30',function(){return settings.artShow===30}),opt('Slideshow 2 min','artshow:120',function(){return settings.artShow===120}),opt(function(){return 'Clock '+(settings.artClock?'On':'Off')},'artclock',function(){return settings.artClock})]},
  {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
  {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
  {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
@@ -335,6 +348,10 @@ function onAction(a){
  if(a.indexOf('theme:')===0){settings.theme=a.split(':')[1]}
  else if(a.indexOf('layout:')===0){settings.layout=a.split(':')[1];offs.home=0}
  else if(a.indexOf('display:')===0){settings.display=a.split(':')[1]}
+ else if(a.indexOf('artidle:')===0){settings.artIdle=+a.split(':')[1];lastAct=Date.now()}
+ else if(a.indexOf('artshow:')===0){settings.artShow=+a.split(':')[1]}
+ else if(a==='artclock'){settings.artClock=!settings.artClock}
+ else if(a==='artnow'){startArt();return}
  else if(a.indexOf('dock:')===0){settings.dock=a.split(':')[1]}
  else if(a.indexOf('clock:')===0){settings.clock24=a.split(':')[1]==='24'}
  else if(a==='showclock'){settings.showClock=!settings.showClock}
@@ -356,11 +373,13 @@ function activate(a){if(!a)return;if(a.p==='__all'){ai=0;offs.grid=0;go('all')}e
 
 /* ---------- native hooks (Back / Home / Menu) ---------- */
 window.onBack=function(){
+ lastAct=Date.now();if(artOn){stopArt();return}
  if(ctx){closeCtx();return}
  if(grab){grab=false;focusMan();hints();return}
  if(screen==='manage'||screen==='hidden')go('settings');else if(screen!=='home')go('home')};
-window.onHome=function(){di=0;offs.home=0;go('home')};
+window.onHome=function(){lastAct=Date.now();if(artOn)stopArt();di=0;offs.home=0;go('home')};
 window.onMenu=function(){
+ lastAct=Date.now();if(artOn){stopArt();return}
  if(ctx){closeCtx();return}
  if(screen==='manage'){var it=mlist[mi];if(it&&it.pin){pins.splice(pins.indexOf(it.p),1);save();grab=false;homeDirty=true;buildManage();toast('Unpinned')}return}
  if(screen==='hidden'){unhide(hi);return}
@@ -368,8 +387,9 @@ window.onMenu=function(){
  if(screen==='home'){var a=dockItems()[di];if(a&&a.p.indexOf('__')!==0){pins.splice(di,1);save();buildHome();buildGrid();toast('Unpinned '+a.n)}}};
 
 /* ---------- keys ---------- */
-document.addEventListener('click',function(e){var t=e.target;while(t&&t!==document){if(t.getAttribute){var a=t.getAttribute('data-action');if(a){onAction(a);return}}t=t.parentNode}});
+document.addEventListener('click',function(e){lastAct=Date.now();if(artOn){stopArt();return}var t=e.target;while(t&&t!==document){if(t.getAttribute){var a=t.getAttribute('data-action');if(a){onAction(a);return}}t=t.parentNode}});
 document.addEventListener('keydown',function(e){var k=e.keyCode,ok=false;
+ lastAct=Date.now();if(artOn){stopArt();e.preventDefault();return}   // the key that wakes art mode does nothing else
  if(mock){if(k===27||k===8){onBack();e.preventDefault();return}if(k===77){onMenu();e.preventDefault();return}}
  if(ctx)ok=ctxKey(k);
  else if(screen==='settings')ok=setKey(k);
@@ -394,9 +414,36 @@ window.refreshApps=function(){var s;try{s=L.apps()}catch(e){s='[]'}
  pins=pins.filter(byPkg);
  try{if(apps.length&&!localStorage.getItem('frameHideV1')){hideAmazon(true);localStorage.setItem('frameHideV1','1')}}catch(e){}
  save();recompute();applyLook();buildHome();buildGrid();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden();refreshSettings();hints()};
-function tick(){var n=new Date(),h=settings.clock24?n.getHours():(n.getHours()%12||12),m=n.getMinutes();
- $('t').textContent=(settings.clock24&&h<10?'0':'')+h+':'+(m<10?'0':'')+m;
- $('d').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
+/* ---------- art mode ----------
+   After the chosen idle time, a full-screen wallpaper (still, or a slideshow) with a small clock. Any key wakes it and is
+   swallowed, so waking never presses a button. The clock hops to another corner every couple of minutes. */
+var artOn=false,lastAct=Date.now(),lastChk=Date.now(),artIdx=0,artFront=0,artTimer=null,artClk=null;
+function timeStr(n){var h=settings.clock24?n.getHours():(n.getHours()%12||12),m=n.getMinutes();return (settings.clock24&&h<10?'0':'')+h+':'+(m<10?'0':'')+m}
+function dateStr(n){return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
+function artTick(){var n=new Date(),c=$('artclock');$('at').textContent=timeStr(n);$('ad').textContent=dateStr(n);
+ c.className='c'+(Math.floor(n.getTime()/120000)%4);c.style.display=settings.artClock?'block':'none'}
+function artNext(){var i=(artIdx+1)%wallpapers.length,im=new Image();
+ im.onload=function(){if(!artOn)return;var f=artFront,nb=$('al'+(1-f)),ob=$('al'+f);
+  nb.style.backgroundImage="url('"+wallSrc(i)+"')";nb.style.opacity=1;ob.style.opacity=0;artFront=1-f;artIdx=i};
+ im.onerror=function(){artIdx=i};                         // a missing photo is skipped
+ im.src=wallSrc(i)}
+function startArt(){if(artOn)return;artOn=true;artIdx=settings.wall;artFront=0;
+ $('al0').style.backgroundImage="url('"+wallSrc(artIdx)+"')";$('al0').style.opacity=1;$('al1').style.opacity=0;
+ $('art').style.display='block';artTick();artClk=setInterval(artTick,15000);
+ if(settings.artShow>0)artTimer=setInterval(artNext,settings.artShow*1000);
+ try{if(L.art)L.art(true)}catch(e){}}
+function stopArt(){if(!artOn)return;artOn=false;clearInterval(artTimer);clearInterval(artClk);artTimer=artClk=null;
+ $('art').style.display='none';$('al0').style.backgroundImage='';$('al1').style.backgroundImage='';lastAct=Date.now();
+ try{if(L.art)L.art(false)}catch(e){}}
+window.onWake=function(){lastAct=Date.now();stopArt()};
+window.onResume=function(){lastAct=Date.now();lastChk=lastAct;stopArt()};
+setInterval(function(){var n=Date.now();
+ if(n-lastChk>15000)lastAct=n;                            // timers were paused (another app, TV asleep): that is not idle time
+ lastChk=n;if(!artOn&&settings.artIdle>0&&n-lastAct>settings.artIdle*60000)startArt()},5000);
+
+function tick(){var n=new Date();
+ $('t').textContent=timeStr(n);
+ $('d').textContent=dateStr(n)}
 load();tick();setInterval(tick,20000);buildSettings();refreshApps();
 window.onresize=function(){focusHome();applyFrost()};
 })();

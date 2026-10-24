@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Base64;
 import android.view.KeyEvent;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -27,6 +28,10 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private WebView web;
+
+    /* Art mode (full-screen wallpaper). While it shows, the first key press only wakes it and is not passed on. */
+    private volatile boolean artOn = false;
+    private int swallowKey = -1;   // key that woke art mode: eat its repeats and its key-up too
 
     /* Single background thread: art is drawn in the order the page asked for it (dock first). */
     private final ExecutorService art = Executors.newSingleThreadExecutor();
@@ -78,11 +83,45 @@ public class MainActivity extends Activity {
 
     private void js(String code) { if (web != null) web.evaluateJavascript(code, null); }
 
-    @Override protected void onResume() { super.onResume(); js("window.refreshApps&&refreshApps()"); }
+    /* Keep the TV from dimming or starting the system screensaver while art mode is showing. */
+    private void keepAwake(final boolean on) {
+        runOnUiThread(new Runnable() { public void run() {
+            if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }});
+    }
+
+    @Override protected void onPause() {
+        artOn = false; swallowKey = -1; keepAwake(false);
+        js("window.onWake&&onWake()");
+        super.onPause();
+        if (web != null) { web.onPause(); web.pauseTimers(); }   // nothing runs while another app is in front
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (web != null) { web.resumeTimers(); web.onResume(); }
+        js("window.onResume&&onResume()");
+        js("window.refreshApps&&refreshApps()");
+    }
     @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); js("window.onHome&&onHome()"); } // Home pressed
     @Override public void onBackPressed() { js("window.onBack&&onBack()"); }  // never exit the launcher
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
+        int code = e.getKeyCode();
+        boolean volume = code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN
+                || code == KeyEvent.KEYCODE_VOLUME_MUTE;
+        if (artOn && !volume) {                       // any key wakes art mode and does nothing else
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                artOn = false; swallowKey = code; keepAwake(false);
+                js("window.onWake&&onWake()");
+            }
+            return true;
+        }
+        if (swallowKey == code) {
+            if (e.getAction() == KeyEvent.ACTION_UP) swallowKey = -1;
+            return true;
+        }
         if (e.getKeyCode() == KeyEvent.KEYCODE_MENU) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) js("window.onMenu&&onMenu()");
             return true;
@@ -135,6 +174,12 @@ public class MainActivity extends Activity {
                     if (i != null) startActivity(i);
                 } catch (Exception ignored) { }
             }});
+        }
+
+        /* The page tells us when art mode starts or stops. */
+        @JavascriptInterface public void art(final boolean on) {
+            artOn = on;
+            keepAwake(on);
         }
 
         @JavascriptInterface public void settings() {
