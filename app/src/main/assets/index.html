@@ -31,6 +31,13 @@ body.noclock.nodate #clock{display:none}
 #artclock .ad{font-size:.9rem;opacity:.85;margin-top:.35rem}
 #artclock.c0{right:3rem;bottom:2.5rem}#artclock.c1{left:3rem;bottom:2.5rem}#artclock.c2{left:3rem;top:2.5rem}#artclock.c3{right:3rem;top:2.5rem}
 
+/* ---------- VPN status pill (home screen, top right; bottom right when the dock is at the top) ---------- */
+#vpn{display:none;position:absolute;right:3rem;top:3rem;z-index:1;align-items:center;gap:.6rem;padding:.5rem 1.1rem;border-radius:2rem;background:rgba(0,0,0,.45);color:#f4f1e9;font-size:1rem;text-shadow:0 1px 6px #0008}
+body.vpnon.scr-home #vpn{display:flex}
+body.dp-top:not(.listMode) #vpn{top:auto;bottom:3rem}
+.vd{width:.7rem;height:.7rem;border-radius:50%;background:#9aa4aa;flex-shrink:0}
+#vpn.on .vd{background:#4cd37b}#vpn.off .vd{background:#f0a030}
+
 /* ---------- tiles ---------- */
 .tile{display:inline-block;width:9rem;margin-right:.8rem;text-align:center;vertical-align:top;opacity:.72;transition:transform .15s,opacity .15s;white-space:normal}
 .tile.f{opacity:1;transform:scale(var(--focus))}
@@ -126,6 +133,7 @@ body.light .li{background:#0000000a}
 <div id="manage" class="panel"><h1>Home apps</h1><div class="pv" id="mv"><div class="pt" id="manageBody"></div></div></div>
 <div id="hiddenp" class="panel"><h1>Hidden apps</h1><div class="pv" id="hv"><div class="pt" id="hiddenBody"></div></div></div>
 <div id="ctx"><div id="cbox"><h2 id="ctitle"></h2><div id="copts"></div></div></div>
+<div id="vpn" class="unk"><span class="vd"></span><span id="vt"></span></div>
 <div id="art"><div class="al" id="al0"></div><div class="al" id="al1"></div><div id="artclock" class="c0"><div class="at" id="at"></div><div class="ad" id="ad"></div></div></div>
 <div id="hint"></div><div id="toast"></div>
 <script src="wallpaper/catalog.js"></script>
@@ -138,7 +146,7 @@ function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 /* ---------- browser preview stand-in for the Android bridge ---------- */
 if(mock){var MK=[['com.netflix.ninja','Netflix'],['com.amazon.firetv.youtube','YouTube'],['com.verizon.fios.tvce','Fios TV'],['org.jellyfin.androidtv','Jellyfin'],['org.xbmc.kodi','Kodi'],['org.videolan.vlc','VLC'],['com.plexapp.android','Plex'],['com.tubitv','Tubi'],['com.esaba.downloader','Downloader'],['com.amazon.firebat','Prime Video'],['com.disney.disneyplus','Disney+'],['com.amazon.cloud9','Silk Browser'],['com.amazon.bueller.photos','Photos'],['com.amazon.music.tv','Amazon Music'],['com.amazon.venezia','Appstore'],['com.amazon.tv.settings.v2','Settings'],['com.amazon.imdb.tv.android.app','Freevee']];
  for(var q=18;q<=46;q++)MK.push(['mock.app'+q,'Sample app '+q]);
- L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')}}}
+ L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
 
 var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce'];
 /* Amazon apps that are never hidden automatically: still useful, or needed to reach system screens */
@@ -153,7 +161,7 @@ function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
 /* ---------- state ---------- */
 var apps=[],vapps=[],icons={},banners={},pins=[],hidden=[],lastJson=null;
 var screen='home',di=0,ai=0,sr=0,sc=0,mi=0,hi=0,grab=false,ctx=null,rowCol=[];
-var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true};
+var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true,vpn:'off'};
 var hn=[],gn=[],mn=[],hln=[],mlist=[],hlist=[],offs={},homeDirty=false;
 
 function load(){
@@ -162,7 +170,7 @@ function load(){
  try{hidden=JSON.parse(localStorage.getItem('frameHidden')||'[]')||[]}catch(e){hidden=[]}
  if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0;
  if(['bottom','center','top'].indexOf(settings.dock)<0)settings.dock='bottom';
- if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0}
+ if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0;if(['off','country','city'].indexOf(settings.vpn)<0)settings.vpn='off'}
 function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings));localStorage.setItem('frameHidden',JSON.stringify(hidden))}catch(e){}}
 function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
 function isHidden(p){return hidden.indexOf(p)>=0}
@@ -193,7 +201,7 @@ function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[],k=CAT[w
  $('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wallSrc(settings.wall)+"')";
  if(settings.theme==='light')c.push('light');if(settings.layout==='list')c.push('listMode');if(settings.layout==='banner')c.push('bannerMode');
  if(settings.display==='icons')c.push('noicons');if(settings.display==='names')c.push('nonames');if(settings.glass)c.push('glass');c.push('scr-'+screen);
- if(!settings.showClock)c.push('noclock');if(!settings.showDate)c.push('nodate');if(settings.dock!=='bottom')c.push('dp-'+settings.dock);
+ if(!settings.showClock)c.push('noclock');if(!settings.showDate)c.push('nodate');if(settings.dock!=='bottom')c.push('dp-'+settings.dock);if(settings.vpn!=='off')c.push('vpnon');
  var clkLow=settings.dock==='top'&&settings.layout!=='list';   // a top dock moves the clock to the bottom corner, so judge it by the photo down there (same area the labels use)
  if(k){if((clkLow?k.label:k.clock)==='dark')c.push('clk-dark');c.push(k.label==='dark'?'lbl-dark':'lbl-light')}
  document.body.className=c.join(' ');document.body.style.setProperty('--focus',settings.focus/100);
@@ -260,6 +268,7 @@ function defs(){return [
  {t:'CLOCK',o:[opt('12-hour','clock:12',function(){return !settings.clock24}),opt('24-hour','clock:24',function(){return settings.clock24}),opt(function(){return 'Clock '+(settings.showClock?'On':'Off')},'showclock',function(){return settings.showClock}),opt(function(){return 'Date '+(settings.showDate?'On':'Off')},'showdate',function(){return settings.showDate})]},
  {t:function(){return 'ART MODE · '+(settings.artIdle?'starts after '+settings.artIdle+' min idle':'off')},o:[opt('Off','artidle:0',function(){return !settings.artIdle}),opt('2 min','artidle:2',function(){return settings.artIdle===2}),opt('5 min','artidle:5',function(){return settings.artIdle===5}),opt('10 min','artidle:10',function(){return settings.artIdle===10}),opt('Start now','artnow')]},
  {t:'ART STYLE',o:[opt('Still photo','artshow:0',function(){return !settings.artShow}),opt('Slideshow 30 s','artshow:30',function(){return settings.artShow===30}),opt('Slideshow 2 min','artshow:120',function(){return settings.artShow===120}),opt(function(){return 'Clock '+(settings.artClock?'On':'Off')},'artclock',function(){return settings.artClock})]},
+ {t:function(){return 'VPN STATUS · '+(settings.vpn==='off'?'off':'checks every few seconds; location looked up online via ipwho.is')},o:[opt('Off','vpn:off',function(){return settings.vpn==='off'}),opt('Country','vpn:country',function(){return settings.vpn==='country'}),opt('Country + city','vpn:city',function(){return settings.vpn==='city'}),opt('Check now','vpnrefresh')]},
  {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
  {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
  {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
@@ -348,6 +357,8 @@ function onAction(a){
  if(a.indexOf('theme:')===0){settings.theme=a.split(':')[1]}
  else if(a.indexOf('layout:')===0){settings.layout=a.split(':')[1];offs.home=0}
  else if(a.indexOf('display:')===0){settings.display=a.split(':')[1]}
+ else if(a.indexOf('vpn:')===0){settings.vpn=a.split(':')[1];vpn.asked=0;vpn.fail=0;save();applyLook();pollVpn();refreshSettings();return}
+ else if(a==='vpnrefresh'){if(settings.vpn==='off'){toast('Turn VPN status on first');return}vpn.loc=null;vpn.asked=0;vpn.fail=0;pollVpn();toast('Checking VPN…');return}
  else if(a.indexOf('artidle:')===0){settings.artIdle=+a.split(':')[1];lastAct=Date.now()}
  else if(a.indexOf('artshow:')===0){settings.artShow=+a.split(':')[1]}
  else if(a==='artclock'){settings.artClock=!settings.artClock}
@@ -436,15 +447,43 @@ function stopArt(){if(!artOn)return;artOn=false;clearInterval(artTimer);clearInt
  $('art').style.display='none';$('al0').style.backgroundImage='';$('al1').style.backgroundImage='';lastAct=Date.now();
  try{if(L.art)L.art(false)}catch(e){}}
 window.onWake=function(){lastAct=Date.now();stopArt()};
-window.onResume=function(){lastAct=Date.now();lastChk=lastAct;stopArt()};
+window.onResume=function(){lastAct=Date.now();lastChk=lastAct;stopArt();pollVpn()};
 setInterval(function(){var n=Date.now();
  if(n-lastChk>15000)lastAct=n;                            // timers were paused (another app, TV asleep): that is not idle time
  lastChk=n;if(!artOn&&settings.artIdle>0&&n-lastAct>settings.artIdle*60000)startArt()},5000);
 
+/* ---------- VPN status ----------
+   Android says whether a VPN tunnel is up (L.vpn, no network traffic). Only then is the exit location looked up online
+   (L.geo), once per new tunnel and then every 10 minutes. The IP address itself is never shown or stored. */
+var vpn={on:false,id:'',err:false,loc:null,seen:false,busy:false,asked:0,fail:0};
+function renderVpn(){var el=$('vpn'),c,t;if(settings.vpn==='off')return;
+ if(!vpn.seen){c='unk';t='VPN · checking…'}
+ else if(vpn.err){c='unk';t='VPN status unavailable'}
+ else if(!vpn.on){c='off';t='VPN off'}
+ else if(vpn.loc){c='on';t='VPN · '+(settings.vpn==='city'&&vpn.loc.city?vpn.loc.city+', ':'')+vpn.loc.country}
+ else if(vpn.fail&&!vpn.busy){c='on';t='VPN on · location unavailable'}
+ else{c='on';t='VPN on · locating…'}
+ el.className=c;$('vt').textContent=t}
+function geoAsk(){if(vpn.busy)return;vpn.busy=true;vpn.asked=Date.now();
+ try{L.geo()}catch(e){vpn.busy=false;vpn.fail++}}
+window.onGeo=function(s){var j=null;vpn.busy=false;try{j=JSON.parse(s)}catch(e){}
+ if(j&&j.ok&&j.country){vpn.loc={country:j.country,city:j.city||''};vpn.fail=0}else vpn.fail++;
+ renderVpn()};
+function pollVpn(){if(settings.vpn==='off')return;var r=null,n=Date.now();
+ try{r=L.vpn?JSON.parse(L.vpn()):null}catch(e){}
+ vpn.seen=true;
+ if(!r){vpn.err=true;vpn.on=false;renderVpn();return}
+ vpn.err=!!r.err;
+ if(!r.on){vpn.on=false;vpn.id='';vpn.loc=null;vpn.fail=0;vpn.asked=0;renderVpn();return}
+ if(!vpn.on||r.id!==vpn.id){vpn.on=true;vpn.id=r.id;vpn.loc=null;vpn.fail=0;vpn.asked=0}   // a new tunnel: the old location no longer applies
+ if(vpn.asked===0||n-vpn.asked>(vpn.loc?600000:Math.min(15000*(1+vpn.fail),120000)))geoAsk();
+ renderVpn()}
+setInterval(function(){if(!artOn)pollVpn()},10000);
+
 function tick(){var n=new Date();
  $('t').textContent=timeStr(n);
  $('d').textContent=dateStr(n)}
-load();tick();setInterval(tick,20000);buildSettings();refreshApps();
+load();tick();setInterval(tick,20000);buildSettings();refreshApps();pollVpn();
 window.onresize=function(){focusHome();applyFrost()};
 })();
 </script></body></html>
