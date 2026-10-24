@@ -25,3 +25,5 @@ It shows in the Fire TV Apps list. Home-button takeover is a separate step (see 
 
 ## Unreleased (v0.5 in progress)
 - Load 1: icons and banners now load lazily as tiles scroll into view (off the UI thread), so the first launch no longer waits on every installed app. Banners are read from the app's launcher activity first, then the app, at the proper 320x180 TV size; apps without a banner show their icon centered instead of a cropped blur.
+- Load 2: real frosted glass. With Glass on, the dock and panels (All apps, Settings, etc.) show the wallpaper's blurred `-panel.jpg`, lined up with the photo behind it, under a veil whose strength was measured per photo so text stays readable in both themes. The clock and, with Glass off, the app labels now pick light or dark text from the photo itself (so Sydney Harbour and Alpine glow get a dark clock), with a soft scrim where a photo is busy.
+- `wallpaper/catalog.js` is now generated from the real wallpaper pixels by `tools/gen_catalog.py` and is read by the launcher. Re-run the script (needs `pillow` and `numpy`) after adding or replacing a wallpaper. The old unused fields were replaced.
