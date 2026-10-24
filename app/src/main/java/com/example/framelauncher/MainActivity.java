@@ -1,5 +1,6 @@
 package com.example.framelauncher;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -11,7 +12,9 @@ import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.Settings;
 import android.util.Base64;
 import android.view.KeyEvent;
@@ -24,6 +27,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -43,6 +49,12 @@ public class MainActivity extends Activity {
 
     /* Single background thread: art is drawn in the order the page asked for it (dock first). */
     private final ExecutorService art = Executors.newSingleThreadExecutor();
+    /* Settings backup: a JSON file in Downloads, so it survives uninstalling the app. */
+    private static final String BACKUP_NAME = "FrameLauncher-settings.json";
+    private static final int REQ_STORAGE = 77;
+    private Runnable afterPerm = null;
+    private String afterPermKind = "";
+
     /* Separate thread for the VPN location lookup so a slow network never delays icon loading. */
     private final ExecutorService net = Executors.newSingleThreadExecutor();
     private static final String GEO_URL = "https://ipwho.is/?fields=success,country,country_code,region,city";
@@ -100,6 +112,35 @@ public class MainActivity extends Activity {
             if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }});
+    }
+
+    private void backupResult(final String kind, final boolean ok, final String data) {
+        final String call = "window.onBackup&&onBackup(" + JSONObject.quote(kind) + "," + ok + "," + JSONObject.quote(data) + ")";
+        runOnUiThread(new Runnable() { public void run() { js(call); } });
+    }
+
+    /* Runs r once storage access is granted (asks the first time on Android 6+). Must be called on the UI thread. */
+    private void withStorage(String kind, Runnable r) {
+        if (Build.VERSION.SDK_INT < 23
+                || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            r.run();
+            return;
+        }
+        afterPerm = r;
+        afterPermKind = kind;
+        requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE }, REQ_STORAGE);
+    }
+
+    @Override public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req != REQ_STORAGE) return;
+        Runnable r = afterPerm;
+        String kind = afterPermKind;
+        afterPerm = null;
+        if (r != null && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) r.run();
+        else if (r != null) backupResult(kind, false, kind.equals("export")
+                ? "storage permission was not allowed" : "Storage permission was not allowed");
     }
 
     @Override protected void onPause() {
@@ -236,6 +277,59 @@ public class MainActivity extends Activity {
                 }
                 final String call = "window.onGeo&&onGeo(" + JSONObject.quote(out) + ")";
                 runOnUiThread(new Runnable() { public void run() { js(call); } });
+            }});
+        }
+
+        @JavascriptInterface public String version() {
+            try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; }
+            catch (Exception ex) { return ""; }
+        }
+
+        /* Writes the page's settings JSON to Downloads/FrameLauncher-settings.json, then calls window.onBackup. */
+        @JavascriptInterface public void exportSettings(final String json) {
+            runOnUiThread(new Runnable() { public void run() {
+                withStorage("export", new Runnable() { public void run() {
+                    net.execute(new Runnable() { public void run() {
+                        try {
+                            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            //noinspection ResultOfMethodCallIgnored
+                            dir.mkdirs();
+                            FileOutputStream o = new FileOutputStream(new File(dir, BACKUP_NAME));
+                            try { o.write(json.getBytes("UTF-8")); } finally { o.close(); }
+                            backupResult("export", true, "Downloads/" + BACKUP_NAME);
+                        } catch (Exception ex) {
+                            backupResult("export", false, "could not write to Downloads");
+                        }
+                    }});
+                }});
+            }});
+        }
+
+        /* Reads Downloads/FrameLauncher-settings.json and hands its text to window.onBackup. */
+        @JavascriptInterface public void importSettings() {
+            runOnUiThread(new Runnable() { public void run() {
+                withStorage("import", new Runnable() { public void run() {
+                    net.execute(new Runnable() { public void run() {
+                        try {
+                            File f = new File(Environment.getExternalStoragePublicDirectory(
+                                    Environment.DIRECTORY_DOWNLOADS), BACKUP_NAME);
+                            if (!f.isFile() || f.length() > 200000) {
+                                backupResult("import", false, "No backup found: put " + BACKUP_NAME + " in Downloads");
+                                return;
+                            }
+                            FileInputStream in = new FileInputStream(f);
+                            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                            try {
+                                byte[] buf = new byte[4096];
+                                int n;
+                                while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                            } finally { in.close(); }
+                            backupResult("import", true, bo.toString("UTF-8"));
+                        } catch (Exception ex) {
+                            backupResult("import", false, "Could not read the backup file");
+                        }
+                    }});
+                }});
             }});
         }
 
