@@ -1,12 +1,16 @@
 package com.example.framelauncher;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Base64;
@@ -18,7 +22,11 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +43,9 @@ public class MainActivity extends Activity {
 
     /* Single background thread: art is drawn in the order the page asked for it (dock first). */
     private final ExecutorService art = Executors.newSingleThreadExecutor();
+    /* Separate thread for the VPN location lookup so a slow network never delays icon loading. */
+    private final ExecutorService net = Executors.newSingleThreadExecutor();
+    private static final String GEO_URL = "https://ipwho.is/?fields=success,country,country_code,region,city";
     private final Map<String, String[]> artCache = new HashMap<String, String[]>(); // art thread only
 
     private String encode(Drawable d, int w, int h) {
@@ -180,6 +191,52 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void art(final boolean on) {
             artOn = on;
             keepAwake(on);
+        }
+
+        /* Is a VPN tunnel up? Local check only, no network traffic. Returns {"on":bool,"id":"<tunnel id>"}. */
+        @JavascriptInterface public String vpn() {
+            try {
+                ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                for (Network n : cm.getAllNetworks()) {
+                    NetworkCapabilities c = cm.getNetworkCapabilities(n);
+                    if (c != null && c.hasTransport(NetworkCapabilities.TRANSPORT_VPN))
+                        return new JSONObject().put("on", true).put("id", String.valueOf(n)).toString();
+                }
+                return "{\"on\":false,\"id\":\"\"}";
+            } catch (Exception ex) { return "{\"on\":false,\"id\":\"\",\"err\":1}"; }
+        }
+
+        /* Asynchronous: asks ipwho.is where this connection exits, then calls window.onGeo(json). The IP is not kept. */
+        @JavascriptInterface public void geo() {
+            net.execute(new Runnable() { public void run() {
+                String out = "{\"ok\":false}";
+                HttpURLConnection h = null;
+                try {
+                    h = (HttpURLConnection) new URL(GEO_URL).openConnection();
+                    h.setConnectTimeout(8000);
+                    h.setReadTimeout(8000);
+                    h.setRequestProperty("Accept", "application/json");
+                    if (h.getResponseCode() == 200) {
+                        BufferedReader r = new BufferedReader(new InputStreamReader(h.getInputStream(), "UTF-8"));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = r.readLine()) != null && sb.length() < 20000) sb.append(line);
+                        r.close();
+                        JSONObject j = new JSONObject(sb.toString());
+                        if (j.optBoolean("success", false)) {
+                            out = new JSONObject().put("ok", true)
+                                    .put("country", j.optString("country"))
+                                    .put("cc", j.optString("country_code"))
+                                    .put("city", j.optString("city")).toString();
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    if (h != null) h.disconnect();
+                }
+                final String call = "window.onGeo&&onGeo(" + JSONObject.quote(out) + ")";
+                runOnUiThread(new Runnable() { public void run() { js(call); } });
+            }});
         }
 
         @JavascriptInterface public void settings() {
