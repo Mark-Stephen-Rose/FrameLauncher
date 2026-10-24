@@ -1,0 +1,68 @@
+name: Release APK
+# Run it by pushing a version tag:  git tag v0.6.0 && git push origin v0.6.0
+# Needs four repository secrets (Settings > Secrets and variables > Actions):
+#   KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing secrets and version
+        run: |
+          for v in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "::error::Repository secret $v is missing"; exit 1; fi
+          done
+          VER="${GITHUB_REF_NAME#v}"
+          if ! echo "$VER" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Tag '$GITHUB_REF_NAME' must look like v1.2.3"; exit 1
+          fi
+          IFS=. read -r MA MI PA <<< "$VER"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          echo "CODE=$((MA * 10000 + MI * 100 + PA))" >> "$GITHUB_ENV"
+
+      - name: Restore keystore
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build signed release APK
+        run: gradle assembleRelease --no-daemon -PappVersionName="$VER" -PappVersionCode="$CODE"
+
+      - name: Verify signature
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "$APK"
+          cp "$APK" "FrameLauncher-$VER.apk"
+
+      - name: Publish to GitHub Releases
+        run: |
+          APK="FrameLauncher-$VER.apk"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK" --title "Frame Launcher $VER" --generate-notes
+          fi

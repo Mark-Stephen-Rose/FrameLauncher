@@ -146,7 +146,7 @@ function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 /* ---------- browser preview stand-in for the Android bridge ---------- */
 if(mock){var MK=[['com.netflix.ninja','Netflix'],['com.amazon.firetv.youtube','YouTube'],['com.verizon.fios.tvce','Fios TV'],['org.jellyfin.androidtv','Jellyfin'],['org.xbmc.kodi','Kodi'],['org.videolan.vlc','VLC'],['com.plexapp.android','Plex'],['com.tubitv','Tubi'],['com.esaba.downloader','Downloader'],['com.amazon.firebat','Prime Video'],['com.disney.disneyplus','Disney+'],['com.amazon.cloud9','Silk Browser'],['com.amazon.bueller.photos','Photos'],['com.amazon.music.tv','Amazon Music'],['com.amazon.venezia','Appstore'],['com.amazon.tv.settings.v2','Settings'],['com.amazon.imdb.tv.android.app','Freevee']];
  for(var q=18;q<=46;q++)MK.push(['mock.app'+q,'Sample app '+q]);
- L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
+ L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
 
 var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce'];
 /* Amazon apps that are never hidden automatically: still useful, or needed to reach system screens */
@@ -168,9 +168,15 @@ function load(){
  try{pins=JSON.parse(localStorage.getItem('pins')||'null');var s=JSON.parse(localStorage.getItem('frameSettings')||'null');if(s)for(var k in s)settings[k]=s[k];
   if(localStorage.getItem('frameDefaultsVersion')!=='2'){pins=PREF.slice(0,3);settings.wall=0;localStorage.setItem('frameDefaultsVersion','2')}}catch(e){pins=null}
  try{hidden=JSON.parse(localStorage.getItem('frameHidden')||'[]')||[]}catch(e){hidden=[]}
+ fixSettings()}
+/* Pull every setting back to a legal value (used after loading and after importing a backup file). */
+function fixSettings(){var k,d={theme:['dark','light'],layout:['dock','list','banner'],display:['both','icons','names'],dock:['bottom','center','top'],vpn:['off','country','city']};
+ for(k in d)if(d[k].indexOf(settings[k])<0)settings[k]=d[k][0];
  if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0;
- if(['bottom','center','top'].indexOf(settings.dock)<0)settings.dock='bottom';
- if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0;if(['off','country','city'].indexOf(settings.vpn)<0)settings.vpn='off'}
+ if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0;
+ if(typeof settings.font!=='number'||settings.font<80||settings.font>130)settings.font=100;
+ if(typeof settings.focus!=='number'||settings.focus<90||settings.focus>140)settings.focus=110;
+ var b=['glass','clock24','showClock','showDate','artClock'];for(k=0;k<b.length;k++)if(typeof settings[b[k]]!=='boolean')settings[b[k]]=b[k]==='clock24'?false:true}
 function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings));localStorage.setItem('frameHidden',JSON.stringify(hidden))}catch(e){}}
 function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
 function isHidden(p){return hidden.indexOf(p)>=0}
@@ -271,6 +277,7 @@ function defs(){return [
  {t:function(){return 'VPN STATUS · '+(settings.vpn==='off'?'off':'checks every few seconds; location looked up online via ipwho.is')},o:[opt('Off','vpn:off',function(){return settings.vpn==='off'}),opt('Country','vpn:country',function(){return settings.vpn==='country'}),opt('Country + city','vpn:city',function(){return settings.vpn==='city'}),opt('Check now','vpnrefresh')]},
  {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
  {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
+ {t:function(){return 'BACKUP · version '+appVer+' · file: Downloads/FrameLauncher-settings.json'},o:[opt('Export settings','export'),opt('Import settings','import')]},
  {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
  {t:'',o:[opt('Close settings','close')]}]}
 var sdefs=defs(),selEls=[],secEls=[],hdEls=[],wallEls=[];
@@ -352,7 +359,22 @@ function ctxKey(k){
  ctxFocus();return true}
 
 /* ---------- actions ---------- */
+var appVer='';try{appVer=(L.version&&L.version())||'unknown'}catch(e){appVer='unknown'}
+var importArm=0;
+/* Export/import go through a file in Downloads, so it survives uninstalling the app. */
+window.onBackup=function(kind,ok,data){
+ if(kind==='export'){toast(ok?'Settings saved to '+data:'Export failed: '+data);return}
+ if(!ok){toast(data);return}
+ var j=null,k,st;try{j=JSON.parse(data)}catch(e){}
+ if(!j||j.app!=='FrameLauncher'||!j.settings||typeof j.settings!=='object'){toast('That file is not a Frame Launcher backup');return}
+ st=j.settings;for(k in settings)if(st.hasOwnProperty(k)&&typeof st[k]===typeof settings[k])settings[k]=st[k];
+ fixSettings();
+ if(j.pins instanceof Array)pins=j.pins.filter(function(p){return typeof p==='string'&&byPkg(p)});
+ if(j.hidden instanceof Array)hidden=j.hidden.filter(function(p){return typeof p==='string'});
+ di=0;offs.home=0;save();applyLook();tick();lastAct=Date.now();rebuildAll();pollVpn();toast('Settings imported')};
 function onAction(a){
+ if(a==='export'){var o={app:'FrameLauncher',version:1,settings:settings,pins:pins,hidden:hidden};try{L.exportSettings(JSON.stringify(o))}catch(e){toast('Export is not available here')}return}
+ if(a==='import'){if(Date.now()-importArm>6000){importArm=Date.now();toast('Press OK again to replace your current settings with the backup');return}importArm=0;try{L.importSettings()}catch(e){toast('Import is not available here')}return}
  if(a.indexOf('wall:')===0){settings.wall=+a.split(':')[1];save();applyLook();refreshSettings();toast('Background: '+wallpapers[settings.wall][0]);return}
  if(a.indexOf('theme:')===0){settings.theme=a.split(':')[1]}
  else if(a.indexOf('layout:')===0){settings.layout=a.split(':')[1];offs.home=0}

@@ -1,4 +1,9 @@
 plugins { id 'com.android.application' }
+// The release workflow passes the version from the git tag (v0.6.0 -> name 0.6.0, code 600).
+def verName = project.findProperty('appVersionName') ?: '0.6.0'
+def verCode = (project.findProperty('appVersionCode') ?: '600') as int
+// Signing details come from the environment (GitHub secrets). Without them, release builds are simply unsigned.
+def haveKey = System.getenv('KEYSTORE_FILE') != null
 android {
     namespace 'com.example.framelauncher'
     compileSdk 34
@@ -6,8 +11,25 @@ android {
         applicationId 'com.example.framelauncher'
         minSdk 22
         targetSdk 28   // Fire OS 7 = Android 9; avoids package-visibility limits
-        versionCode 4
-        versionName '0.4'
+        versionCode verCode
+        versionName verName
     }
+    signingConfigs {
+        release {
+            if (haveKey) {
+                storeFile file(System.getenv('KEYSTORE_FILE'))
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (haveKey) signingConfig signingConfigs.release
+        }
+    }
+    lint { abortOnError false; checkReleaseBuilds false }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }
