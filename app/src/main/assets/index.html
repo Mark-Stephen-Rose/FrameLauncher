@@ -17,6 +17,10 @@ body.clk-dark #clock:before{background:radial-gradient(ellipse closest-side at 5
 #d{display:block;margin-top:.6rem;font-size:1.1rem;opacity:.8}
 /* the clock only belongs on the home screen; other screens would draw over it */
 body:not(.scr-home) #clock{display:none}
+body.noclock #t{display:none}
+body.nodate #d{display:none}
+body.noclock #d{margin-top:0;font-size:1.6rem;opacity:.9}
+body.noclock.nodate #clock{display:none}
 
 /* ---------- tiles ---------- */
 .tile{display:inline-block;width:9rem;margin-right:.8rem;text-align:center;vertical-align:top;opacity:.72;transition:transform .15s,opacity .15s;white-space:normal}
@@ -42,6 +46,10 @@ body.scr-home #dock{display:block}
 .listMode .ic{width:2.5rem;height:2.5rem;line-height:2.5rem;margin:0;font-size:1.2rem;flex-shrink:0}
 .listMode .nm{font-size:1rem}
 body.light.listMode .tile.f{background:rgba(0,0,0,.1)}
+/* dock position (Dock and TV banner layouts; List keeps its own fixed spot). A top dock moves the clock to the bottom corner. */
+body.dp-top:not(.listMode) #dock{bottom:auto;top:3rem}
+body.dp-top:not(.listMode) #clock{top:auto;bottom:3rem}
+body.dp-center:not(.listMode) #dock{bottom:auto;top:50%;transform:translateY(-50%)}
 
 /* labels with Glass off sit on the bare photo, so their colour follows the photo, not the theme */
 body.lbl-light:not(.glass) #dock{color:#f4f1e9}
@@ -135,14 +143,15 @@ function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
 /* ---------- state ---------- */
 var apps=[],vapps=[],icons={},banners={},pins=[],hidden=[],lastJson=null;
 var screen='home',di=0,ai=0,sr=0,sc=0,mi=0,hi=0,grab=false,ctx=null,rowCol=[];
-var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110};
+var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom'};
 var hn=[],gn=[],mn=[],hln=[],mlist=[],hlist=[],offs={},homeDirty=false;
 
 function load(){
  try{pins=JSON.parse(localStorage.getItem('pins')||'null');var s=JSON.parse(localStorage.getItem('frameSettings')||'null');if(s)for(var k in s)settings[k]=s[k];
   if(localStorage.getItem('frameDefaultsVersion')!=='2'){pins=PREF.slice(0,3);settings.wall=0;localStorage.setItem('frameDefaultsVersion','2')}}catch(e){pins=null}
  try{hidden=JSON.parse(localStorage.getItem('frameHidden')||'[]')||[]}catch(e){hidden=[]}
- if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0}
+ if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0;
+ if(['bottom','center','top'].indexOf(settings.dock)<0)settings.dock='bottom'}
 function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings));localStorage.setItem('frameHidden',JSON.stringify(hidden))}catch(e){}}
 function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
 function isHidden(p){return hidden.indexOf(p)>=0}
@@ -173,9 +182,11 @@ function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[],k=CAT[w
  $('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wallSrc(settings.wall)+"')";
  if(settings.theme==='light')c.push('light');if(settings.layout==='list')c.push('listMode');if(settings.layout==='banner')c.push('bannerMode');
  if(settings.display==='icons')c.push('noicons');if(settings.display==='names')c.push('nonames');if(settings.glass)c.push('glass');c.push('scr-'+screen);
- if(k){if(k.clock==='dark')c.push('clk-dark');c.push(k.label==='dark'?'lbl-dark':'lbl-light')}
+ if(!settings.showClock)c.push('noclock');if(!settings.showDate)c.push('nodate');if(settings.dock!=='bottom')c.push('dp-'+settings.dock);
+ var clkLow=settings.dock==='top'&&settings.layout!=='list';   // a top dock moves the clock to the bottom corner, so judge it by the photo down there (same area the labels use)
+ if(k){if((clkLow?k.label:k.clock)==='dark')c.push('clk-dark');c.push(k.label==='dark'?'lbl-dark':'lbl-light')}
  document.body.className=c.join(' ');document.body.style.setProperty('--focus',settings.focus/100);
- document.body.style.setProperty('--ca',k?Math.min(k.clockScrim,.36):0);
+ document.body.style.setProperty('--ca',k?(clkLow?.3:Math.min(k.clockScrim,.36)):0);
  document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw';applyFrost()}
 /* Paint the blurred wallpaper behind each visible glass surface, lined up with the full-screen photo. */
 function applyFrost(){var k=wallCat(),ids=['dock','all','settings','manage','hiddenp'],on=settings.glass&&k,i,el,r,b,key,a,rgb,veil;
@@ -233,7 +244,9 @@ function defs(){return [
  {t:'BACKGROUND',w:1},
  {t:'THEME',o:[opt('Dark','theme:dark',function(){return settings.theme==='dark'}),opt('Light','theme:light',function(){return settings.theme==='light'})]},
  {t:'LAYOUT',o:[opt('Dock','layout:dock',function(){return settings.layout==='dock'}),opt('List','layout:list',function(){return settings.layout==='list'}),opt('TV banners','layout:banner',function(){return settings.layout==='banner'})]},
+ {t:function(){return 'DOCK POSITION'+(settings.layout==='list'?' · not used by the List layout':'')},o:[opt('Bottom','dock:bottom',function(){return settings.dock==='bottom'}),opt('Center','dock:center',function(){return settings.dock==='center'}),opt('Top','dock:top',function(){return settings.dock==='top'})]},
  {t:'APP LABELS',o:[opt('Icons + names','display:both',function(){return settings.display==='both'}),opt('Icons only','display:icons',function(){return settings.display==='icons'}),opt('Names only','display:names',function(){return settings.display==='names'})]},
+ {t:'CLOCK',o:[opt('12-hour','clock:12',function(){return !settings.clock24}),opt('24-hour','clock:24',function(){return settings.clock24}),opt(function(){return 'Clock '+(settings.showClock?'On':'Off')},'showclock',function(){return settings.showClock}),opt(function(){return 'Date '+(settings.showDate?'On':'Off')},'showdate',function(){return settings.showDate})]},
  {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
  {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
  {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
@@ -322,6 +335,10 @@ function onAction(a){
  if(a.indexOf('theme:')===0){settings.theme=a.split(':')[1]}
  else if(a.indexOf('layout:')===0){settings.layout=a.split(':')[1];offs.home=0}
  else if(a.indexOf('display:')===0){settings.display=a.split(':')[1]}
+ else if(a.indexOf('dock:')===0){settings.dock=a.split(':')[1]}
+ else if(a.indexOf('clock:')===0){settings.clock24=a.split(':')[1]==='24'}
+ else if(a==='showclock'){settings.showClock=!settings.showClock}
+ else if(a==='showdate'){settings.showDate=!settings.showDate}
  else if(a==='glass'){settings.glass=!settings.glass}
  else if(a.indexOf('font:')===0){settings.font=Math.max(80,Math.min(130,settings.font+(a.indexOf('+')>=0?10:-10)))}
  else if(a.indexOf('focus:')===0){settings.focus=Math.max(90,Math.min(140,settings.focus+(a.indexOf('+')>=0?10:-10)))}
@@ -330,7 +347,7 @@ function onAction(a){
  else if(a==='amazon'){hideAmazon(false);return}
  else if(a==='system'){try{L.settings()}catch(e){}return}
  else if(a==='close'){go('home');return}
- save();applyLook();rebuildAll()}
+ save();applyLook();tick();rebuildAll()}
 function rebuildAll(){recompute();buildHome();buildGrid();refreshSettings();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden()}
 function go(s){screen=s;ctx=null;grab=false;$('ctx').style.display='none';applyLook();
  if(homeDirty&&(s==='home'||s==='all')){buildHome();buildGrid();homeDirty=false}
@@ -377,9 +394,10 @@ window.refreshApps=function(){var s;try{s=L.apps()}catch(e){s='[]'}
  pins=pins.filter(byPkg);
  try{if(apps.length&&!localStorage.getItem('frameHideV1')){hideAmazon(true);localStorage.setItem('frameHideV1','1')}}catch(e){}
  save();recompute();applyLook();buildHome();buildGrid();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden();refreshSettings();hints()};
-function tick(){var n=new Date(),h=n.getHours()%12||12,m=n.getMinutes();$('t').textContent=h+':'+(m<10?'0':'')+m;
+function tick(){var n=new Date(),h=settings.clock24?n.getHours():(n.getHours()%12||12),m=n.getMinutes();
+ $('t').textContent=(settings.clock24&&h<10?'0':'')+h+':'+(m<10?'0':'')+m;
  $('d').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getDate()}
-tick();setInterval(tick,20000);load();buildSettings();refreshApps();
+load();tick();setInterval(tick,20000);buildSettings();refreshApps();
 window.onresize=function(){focusHome();applyFrost()};
 })();
 </script></body></html>
