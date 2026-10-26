@@ -10,7 +10,7 @@
     <uses-feature android:name="android.software.leanback" android:required="false"/>
     <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
     <application android:label="Frame Launcher" android:icon="@drawable/ic" android:banner="@drawable/banner"
-        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+        android:theme="@style/FrameTheme">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize">
             <!-- Appears in the Apps list so you can open it manually -->

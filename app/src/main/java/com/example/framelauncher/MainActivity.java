@@ -2,8 +2,10 @@ package com.example.framelauncher;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
@@ -55,6 +57,12 @@ public class MainActivity extends Activity {
     private Runnable afterPerm = null;
     private String afterPermKind = "";
 
+    /* The installed-apps list is rebuilt only when an app is installed, removed or updated, so coming back to the
+       launcher does not re-query every app each time. */
+    private final Object appsLock = new Object();
+    private String appsCache = null;
+    private BroadcastReceiver pkgReceiver;
+
     /* Separate thread for the VPN location lookup so a slow network never delays icon loading. */
     private final ExecutorService net = Executors.newSingleThreadExecutor();
     private static final String GEO_URL = "https://ipwho.is/?fields=success,country,country_code,region,city";
@@ -102,6 +110,21 @@ public class MainActivity extends Activity {
         setContentView(web);
         web.requestFocus();
         web.loadUrl("file:///android_asset/index.html");
+        pkgReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) { synchronized (appsLock) { appsCache = null; } }
+        };
+        IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_PACKAGE_ADDED);
+        f.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        f.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        f.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        f.addDataScheme("package");
+        registerReceiver(pkgReceiver, f);
+    }
+
+    @Override protected void onDestroy() {
+        try { unregisterReceiver(pkgReceiver); } catch (Exception ignored) { }
+        super.onDestroy();
     }
 
     private void js(String code) { if (web != null) web.evaluateJavascript(code, null); }
@@ -157,7 +180,11 @@ public class MainActivity extends Activity {
         js("window.onResume&&onResume()");
         js("window.refreshApps&&refreshApps()");
     }
-    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); js("window.onHome&&onHome()"); } // Home pressed
+    @Override protected void onNewIntent(Intent i) {   // Home pressed
+        super.onNewIntent(i);
+        overridePendingTransition(0, 0);
+        js("window.onHome&&onHome()");
+    }
     @Override public void onBackPressed() { js("window.onBack&&onBack()"); }  // never exit the launcher
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
@@ -184,6 +211,7 @@ public class MainActivity extends Activity {
 
     private class Bridge {
         @JavascriptInterface public String apps() {
+            synchronized (appsLock) { if (appsCache != null) return appsCache; }
             try {
                 PackageManager pm = getPackageManager();
                 Map<String, String> found = new LinkedHashMap<String, String>();
@@ -200,7 +228,9 @@ public class MainActivity extends Activity {
                 JSONArray out = new JSONArray();
                 for (Map.Entry<String, String> en : found.entrySet())
                     out.put(new JSONObject().put("p", en.getKey()).put("n", en.getValue()));
-                return out.toString();
+                String json = out.toString();
+                synchronized (appsLock) { appsCache = json; }
+                return json;
             } catch (Exception ex) { return "[]"; }
         }
 

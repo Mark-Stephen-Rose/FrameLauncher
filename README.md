@@ -37,5 +37,5 @@ It shows in the Fire TV Apps list. Home-button takeover is a separate step (see 
   adb shell settings put secure enabled_accessibility_services com.example.framelauncher/com.example.framelauncher.HomeService
   adb shell settings put secure accessibility_enabled 1
   ```
-  Amazon's home screen flashes for a moment before Frame Launcher appears, because Fire OS gives accessibility services no key presses. To undo everything, switch the service off in Accessibility, or turn Takeover Off.
+  Amazon's home screen flashes for a moment before Frame Launcher appears, because Fire OS gives accessibility services no key presses. To keep the return quick, Frame Launcher opens without a transition animation, keeps its app list cached until an app is installed, removed or updated, and shows a dark "frame" splash while it starts after being closed by the system. To undo everything, switch the service off in Accessibility, or turn Takeover Off.
 - `wallpaper/catalog.js` is now generated from the real wallpaper pixels by `tools/gen_catalog.py` and is read by the launcher. Re-run the script (needs `pillow` and `numpy`) after adding or replacing a wallpaper. The old unused fields were replaced.

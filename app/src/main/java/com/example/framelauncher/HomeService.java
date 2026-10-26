@@ -35,7 +35,8 @@ public class HomeService extends AccessibilityService {
     static void openFrame(Context c) {
         try {
             Intent i = new Intent(c, MainActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                    | Intent.FLAG_ACTIVITY_NO_ANIMATION);   // no slide/fade, so it appears as fast as it can
             c.startActivity(i);
         } catch (Exception ignored) { }
     }
