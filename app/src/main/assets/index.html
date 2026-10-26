@@ -146,7 +146,7 @@ function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 /* ---------- browser preview stand-in for the Android bridge ---------- */
 if(mock){var MK=[['com.netflix.ninja','Netflix'],['com.amazon.firetv.youtube','YouTube'],['com.verizon.fios.tvce','Fios TV'],['org.jellyfin.androidtv','Jellyfin'],['org.xbmc.kodi','Kodi'],['org.videolan.vlc','VLC'],['com.plexapp.android','Plex'],['com.tubitv','Tubi'],['com.esaba.downloader','Downloader'],['com.amazon.firebat','Prime Video'],['com.disney.disneyplus','Disney+'],['com.amazon.cloud9','Silk Browser'],['com.amazon.bueller.photos','Photos'],['com.amazon.music.tv','Amazon Music'],['com.amazon.venezia','Appstore'],['com.amazon.tv.settings.v2','Settings'],['com.amazon.imdb.tv.android.app','Freevee']];
  for(var q=18;q<=46;q++)MK.push(['mock.app'+q,'Sample app '+q]);
- L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
+ L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p)},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},homeState:function(){return JSON.stringify({service:false,takeover:true})},setTakeover:function(){},openAmazonHome:function(){return false},openAccessibility:function(){},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
 
 var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce'];
 /* Amazon apps that are never hidden automatically: still useful, or needed to reach system screens */
@@ -278,6 +278,7 @@ function defs(){return [
  {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
  {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
  {t:function(){return 'BACKUP · version '+appVer+' · file: Downloads/FrameLauncher-settings.json'},o:[opt('Export settings','export'),opt('Import settings','import')]},
+ {t:function(){var h=homeInfo();return 'HOME BUTTON · '+(!h?'not available here':!h.service?'accessibility service is OFF, so Home still goes to Fire TV':h.takeover?'Home and start-up open Frame Launcher':'takeover paused')},o:[opt(function(){var h=homeInfo();return 'Takeover '+(h&&h.takeover?'On':'Off')},'hometake',function(){var h=homeInfo();return h&&h.takeover}),opt('Open Fire TV home','homeamazon'),opt('Accessibility settings','a11y')]},
  {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
  {t:'',o:[opt('Close settings','close')]}]}
 var sdefs=defs(),selEls=[],secEls=[],hdEls=[],wallEls=[];
@@ -372,7 +373,11 @@ window.onBackup=function(kind,ok,data){
  if(j.pins instanceof Array)pins=j.pins.filter(function(p){return typeof p==='string'&&byPkg(p)});
  if(j.hidden instanceof Array)hidden=j.hidden.filter(function(p){return typeof p==='string'});
  di=0;offs.home=0;save();applyLook();tick();lastAct=Date.now();rebuildAll();pollVpn();toast('Settings imported')};
+function homeInfo(){try{return JSON.parse(L.homeState())}catch(e){return null}}
 function onAction(a){
+ if(a==='hometake'){var h=homeInfo();if(!h){toast('Not available here');return}try{L.setTakeover(!h.takeover)}catch(e){}refreshSettings();return}
+ if(a==='homeamazon'){var ok=false;try{ok=L.openAmazonHome()}catch(e){}if(!ok)toast('Could not find the Fire TV home screen');return}
+ if(a==='a11y'){try{L.openAccessibility()}catch(e){}return}
  if(a==='export'){var o={app:'FrameLauncher',version:1,settings:settings,pins:pins,hidden:hidden};try{L.exportSettings(JSON.stringify(o))}catch(e){toast('Export is not available here')}return}
  if(a==='import'){if(Date.now()-importArm>6000){importArm=Date.now();toast('Press OK again to replace your current settings with the backup');return}importArm=0;try{L.importSettings()}catch(e){toast('Import is not available here')}return}
  if(a.indexOf('wall:')===0){settings.wall=+a.split(':')[1];save();applyLook();refreshSettings();toast('Background: '+wallpapers[settings.wall][0]);return}

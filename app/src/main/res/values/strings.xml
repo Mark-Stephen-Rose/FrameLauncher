@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_service_description">Brings Frame Launcher back when the Fire TV home screen appears, so the Home button and start-up open Frame Launcher. It only watches for Amazon\'s launcher window and reads no screen content.</string>
+</resources>
