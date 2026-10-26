@@ -153,6 +153,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (web != null) { web.resumeTimers(); web.onResume(); }
+        HomeService.setAmazonMode(this, false);   // Frame is in front again, so the Home button comes back here
         js("window.onResume&&onResume()");
         js("window.refreshApps&&refreshApps()");
     }
@@ -277,6 +278,38 @@ public class MainActivity extends Activity {
                 }
                 final String call = "window.onGeo&&onGeo(" + JSONObject.quote(out) + ")";
                 runOnUiThread(new Runnable() { public void run() { js(call); } });
+            }});
+        }
+
+        /* Home button takeover status: is the accessibility service running, and is the switch on? */
+        @JavascriptInterface public String homeState() {
+            return "{\"service\":" + HomeService.running + ",\"takeover\":"
+                    + HomeService.prefs(MainActivity.this).getBoolean(HomeService.KEY_TAKEOVER, true) + "}";
+        }
+
+        @JavascriptInterface public void setTakeover(boolean on) {
+            HomeService.prefs(MainActivity.this).edit()
+                    .putBoolean(HomeService.KEY_TAKEOVER, on).putBoolean(HomeService.KEY_AMAZON_MODE, false).apply();
+        }
+
+        /* Escape hatch: open Amazon's own home screen and leave it alone until Frame Launcher is opened again. */
+        @JavascriptInterface public boolean openAmazonHome() {
+            for (String pkg : HomeService.AMAZON_LAUNCHERS) {
+                final Intent h = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                        .setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (getPackageManager().resolveActivity(h, 0) == null) continue;
+                HomeService.setAmazonMode(MainActivity.this, true);
+                runOnUiThread(new Runnable() { public void run() {
+                    try { startActivity(h); } catch (Exception ignored) { HomeService.setAmazonMode(MainActivity.this, false); }
+                }});
+                return true;
+            }
+            return false;
+        }
+
+        @JavascriptInterface public void openAccessibility() {
+            runOnUiThread(new Runnable() { public void run() {
+                try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); } catch (Exception ignored) { }
             }});
         }
 
