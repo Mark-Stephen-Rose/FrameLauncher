@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Frame Launcher v0.4</title>
+<html><head><meta charset="utf-8"><title>Frame Launcher</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 html{font-size:1.5625vw}
@@ -54,7 +54,7 @@ body.dp-top:not(.listMode) #vpn{top:auto;bottom:3rem}
 /* ---------- home: dock / list ---------- */
 #dock{display:none;position:absolute;left:3rem;right:3rem;bottom:3.5rem;overflow:hidden}
 body.scr-home #dock{display:block}
-#track{position:relative;white-space:nowrap;padding:1.3rem 1.2rem;transition:transform .25s ease-out;will-change:transform}
+#track{position:relative;white-space:nowrap;padding:calc(.9rem + (var(--focus) - 1) * 5rem) calc(.8rem + (var(--focus) - 1) * 6rem);transition:transform .25s ease-out;will-change:transform}
 .listMode #dock{top:13rem;bottom:2.5rem;left:4rem;right:4rem}
 .listMode #track{white-space:normal;padding:.6rem}
 .listMode .tile{display:flex;width:100%;height:3.5rem;align-items:center;text-align:left;margin:.25rem 0;gap:1rem;padding:.3rem .8rem;border-radius:.7rem}
@@ -65,7 +65,7 @@ body.light.listMode .tile.f{background:rgba(0,0,0,.1)}
 /* dock position (Dock and TV banner layouts; List keeps its own fixed spot). A top dock moves the clock to the bottom corner. */
 body.dp-top:not(.listMode) #dock{bottom:auto;top:3rem}
 body.dp-top:not(.listMode) #clock{top:auto;bottom:3rem}
-body.dp-center:not(.listMode) #dock{bottom:auto;top:50%;transform:translateY(-50%)}
+body.dp-center:not(.listMode) #dock{bottom:auto;top:30%}   /* script centres it exactly (and keeps it clear of the clock) */
 
 /* labels with Glass off sit on the bare photo, so their colour follows the photo, not the theme */
 body.lbl-light:not(.glass) #dock{color:#f4f1e9}
@@ -214,7 +214,17 @@ function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[],k=CAT[w
  document.body.style.setProperty('--ca',k?(clkLow?.3:Math.min(k.clockScrim,.36)):0);
  document.documentElement.style.fontSize=(1.5625*settings.font/100)+'vw';applyFrost()}
 /* Paint the blurred wallpaper behind each visible glass surface, lined up with the full-screen photo. */
-function applyFrost(){var k=wallCat(),ids=['dock','all','settings','manage','hiddenp'],on=settings.glass&&k,i,el,r,b,key,a,rgb,veil;
+/* Centre the dock vertically, but never up under the clock: at big font sizes it steps down instead of covering the date. */
+function placeDock(){var d=$('dock'),c,rem,top,vh;
+ if(settings.dock!=='center'||settings.layout==='list'){d.style.top='';d.style.bottom='';return}
+ if(!d.offsetHeight)return;                                  // not on screen right now
+ rem=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;vh=window.innerHeight;
+ d.style.bottom='auto';d.style.top='0px';
+ top=Math.round((vh-d.offsetHeight)/2);c=$('clock').getBoundingClientRect();
+ if(c.height>0)top=Math.max(top,Math.round(c.bottom+.7*rem));
+ top=Math.max(0,Math.min(top,Math.round(vh-d.offsetHeight-2.6*rem)));   // stay above the hint bar
+ d.style.top=top+'px'}
+function applyFrost(){placeDock();var k=wallCat(),ids=['dock','all','settings','manage','hiddenp'],on=settings.glass&&k,i,el,r,b,key,a,rgb,veil;
  b=$('bg').getBoundingClientRect();
  for(i=0;i<ids.length;i++){el=$(ids[i]);
   if(!on){el.style.backgroundImage='';el.style.backgroundSize='';el.style.backgroundPosition='';el.style.backgroundColor='';continue}
@@ -246,6 +256,8 @@ function dockItems(){var a=[];for(var i=0;i<pins.length;i++)a.push(byPkg(pins[i]
 var asked={},ios={};
 function want(p){if(!p||p.indexOf('__')===0||asked[p])return;asked[p]=1;
  if(L.load)try{L.load(p)}catch(e){window.onArt(p,'','')}else window.onArt(p,'','')}
+/* An app was installed, updated or changed: forget its old art and fetch it again. */
+window.onPkgChanged=function(p){if(!p||!byPkg(p))return;asked[p]=0;delete icons[p];delete banners[p];want(p)};
 window.onArt=function(p,ic,bn){icons[p]=ic||'';banners[p]=bn||'';
  var els=document.querySelectorAll('.tile[data-p="'+p+'"] .ic'),a=byPkg(p),i;
  for(i=0;i<els.length;i++)els[i].innerHTML=icHtml(p,a?a.n:'')};
@@ -372,6 +384,7 @@ window.onBackup=function(kind,ok,data){
  fixSettings();
  if(j.pins instanceof Array)pins=j.pins.filter(function(p){return typeof p==='string'&&byPkg(p)});
  if(j.hidden instanceof Array)hidden=j.hidden.filter(function(p){return typeof p==='string'});
+ hidden=hidden.filter(function(p){return pins.indexOf(p)<0});   // pinned wins, so an app is never on Home yet missing from All apps
  di=0;offs.home=0;save();applyLook();tick();lastAct=Date.now();rebuildAll();pollVpn();toast('Settings imported')};
 function homeInfo(){try{return JSON.parse(L.homeState())}catch(e){return null}}
 function onAction(a){
@@ -449,7 +462,7 @@ window.refreshApps=function(){var s;try{s=L.apps()}catch(e){s='[]'}
  try{apps=JSON.parse(s)}catch(e){apps=[]}
  apps.sort(function(a,b){return a.n.toLowerCase()<b.n.toLowerCase()?-1:1});
  if(!pins){pins=[];for(var j=0;j<PREF.length&&pins.length<8;j++)if(byPkg(PREF[j]))pins.push(PREF[j]);for(var k=0;k<apps.length&&pins.length<6;k++)if(pins.indexOf(apps[k].p)<0)pins.push(apps[k].p)}
- pins=pins.filter(byPkg);
+ pins=pins.filter(byPkg);hidden=hidden.filter(function(p){return pins.indexOf(p)<0});
  try{if(apps.length&&!localStorage.getItem('frameHideV1')){hideAmazon(true);localStorage.setItem('frameHideV1','1')}}catch(e){}
  save();recompute();applyLook();buildHome();buildGrid();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden();refreshSettings();hints()};
 /* ---------- art mode ----------

@@ -65,6 +65,8 @@ public class MainActivity extends Activity {
 
     /* Separate thread for the VPN location lookup so a slow network never delays icon loading. */
     private final ExecutorService net = Executors.newSingleThreadExecutor();
+    /* Separate again for the backup file, so exporting never waits behind a slow VPN lookup. */
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
     private static final String GEO_URL = "https://ipwho.is/?fields=success,country,country_code,region,city";
     private final Map<String, String[]> artCache = new HashMap<String, String[]>(); // art thread only
 
@@ -111,7 +113,13 @@ public class MainActivity extends Activity {
         web.requestFocus();
         web.loadUrl("file:///android_asset/index.html");
         pkgReceiver = new BroadcastReceiver() {
-            @Override public void onReceive(Context c, Intent i) { synchronized (appsLock) { appsCache = null; } }
+            @Override public void onReceive(Context c, Intent i) {
+                synchronized (appsLock) { appsCache = null; }
+                final String pkg = (i != null && i.getData() != null) ? i.getData().getSchemeSpecificPart() : null;
+                if (pkg == null) return;
+                art.execute(new Runnable() { public void run() { artCache.remove(pkg); } });   // same thread as load(), so it runs first
+                js("window.onPkgChanged&&onPkgChanged(" + JSONObject.quote(pkg) + ")");
+            }
         };
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -352,7 +360,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void exportSettings(final String json) {
             runOnUiThread(new Runnable() { public void run() {
                 withStorage("export", new Runnable() { public void run() {
-                    net.execute(new Runnable() { public void run() {
+                    io.execute(new Runnable() { public void run() {
                         try {
                             File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                             //noinspection ResultOfMethodCallIgnored
@@ -372,7 +380,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void importSettings() {
             runOnUiThread(new Runnable() { public void run() {
                 withStorage("import", new Runnable() { public void run() {
-                    net.execute(new Runnable() { public void run() {
+                    io.execute(new Runnable() { public void run() {
                         try {
                             File f = new File(Environment.getExternalStoragePublicDirectory(
                                     Environment.DIRECTORY_DOWNLOADS), BACKUP_NAME);
