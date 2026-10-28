@@ -6,6 +6,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
@@ -16,7 +18,9 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
+import android.net.Uri;
 import android.os.Environment;
+import android.os.StatFs;
 import android.provider.Settings;
 import android.util.Base64;
 import android.view.KeyEvent;
@@ -67,6 +71,7 @@ public class MainActivity extends Activity {
     private final ExecutorService net = Executors.newSingleThreadExecutor();
     /* Separate again for the backup file, so exporting never waits behind a slow VPN lookup. */
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private String webUa = "";   // set on the UI thread, read by Bridge.info()
     private static final String GEO_URL = "https://ipwho.is/?fields=success,country,country_code,region,city";
     private final Map<String, String[]> artCache = new HashMap<String, String[]>(); // art thread only
 
@@ -107,6 +112,7 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);   // localStorage holds pinned apps
+        webUa = s.getUserAgentString();
         web.addJavascriptInterface(new Bridge(), "Launcher");
         web.setWebViewClient(new WebViewClient());
         setContentView(web);
@@ -258,13 +264,72 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void launch(final String pkg) {
             runOnUiThread(new Runnable() { public void run() {
+                boolean ok = false;
                 try {
                     PackageManager pm = getPackageManager();
                     Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
                     if (i == null) i = pm.getLaunchIntentForPackage(pkg);
-                    if (i != null) startActivity(i);
+                    if (i != null) { startActivity(i); ok = true; }
                 } catch (Exception ignored) { }
+                if (!ok) js("window.onLaunchFail&&onLaunchFail(" + JSONObject.quote(pkg) + ")");
             }});
+        }
+
+        /* Opens Android's own App info screen for the package. Returns "ok" or "none" (this Fire TV has no such screen). */
+        @JavascriptInterface public String appInfo(final String pkg) {
+            try {
+                final Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (i.resolveActivity(getPackageManager()) == null) return "none";
+                runOnUiThread(new Runnable() { public void run() {
+                    try { startActivity(i); } catch (Exception ignored) { }
+                }});
+                return "ok";
+            } catch (Exception ex) { return "none"; }
+        }
+
+        /* Asks Android to uninstall the package (the system shows its own confirmation).
+           Returns "ok", "system" (part of Fire TV, cannot be removed) or "none" (no uninstaller available). */
+        @JavascriptInterface public String uninstall(final String pkg) {
+            try {
+                ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
+                boolean sys = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+                boolean updated = (ai.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
+                if (sys && !updated) return "system";
+                final Intent i = new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (i.resolveActivity(getPackageManager()) == null) return "none";
+                runOnUiThread(new Runnable() { public void run() {
+                    try { startActivity(i); } catch (Exception ignored) { }
+                }});
+                return "ok";
+            } catch (Exception ex) { return "none"; }
+        }
+
+        /* About screen data: app version, device, WebView, Home service state and free storage. */
+        @JavascriptInterface public String info() {
+            try {
+                JSONObject o = new JSONObject();
+                PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+                o.put("ver", pi.versionName).put("code", pi.versionCode)
+                 .put("sdk", Build.VERSION.SDK_INT).put("rel", Build.VERSION.RELEASE)
+                 .put("model", Build.MANUFACTURER + " " + Build.MODEL);
+                String wv = "";
+                if (Build.VERSION.SDK_INT >= 26) {
+                    try { PackageInfo w = WebView.getCurrentWebViewPackage(); if (w != null) wv = w.versionName; }
+                    catch (Exception ignored) { }
+                }
+                if (wv == null || wv.length() == 0) {
+                    int a = webUa.indexOf("Chrome/");
+                    if (a >= 0) { int e = webUa.indexOf(' ', a); wv = webUa.substring(a + 7, e < 0 ? webUa.length() : e); }
+                }
+                o.put("webview", wv == null ? "" : wv);
+                o.put("service", HomeService.running)
+                 .put("takeover", HomeService.prefs(MainActivity.this).getBoolean(HomeService.KEY_TAKEOVER, true));
+                StatFs sf = new StatFs(Environment.getDataDirectory().getPath());
+                o.put("free", sf.getAvailableBytes()).put("total", sf.getTotalBytes());
+                return o.toString();
+            } catch (Exception ex) { return "{}"; }
         }
 
         /* The page tells us when art mode starts or stops. */
