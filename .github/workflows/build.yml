@@ -3,7 +3,25 @@ on:
   workflow_dispatch:
   push:
 jobs:
+  ui-tests:
+    # Opens the launcher page in a headless browser and drives it with the keyboard: every setting, the layouts, backup
+    # import, the restore prompt, shuffle and the update check. It runs before the APK is built, so a broken page stops here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci
+        working-directory: tests
+      - run: npx playwright install --with-deps chromium
+        working-directory: tests
+      - run: npm test
+        working-directory: tests
   build:
+    needs: ui-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

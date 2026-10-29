@@ -123,6 +123,7 @@ body.light .li{background:#0000000a}
 #cbox h2{margin:.1rem .6rem .8rem;font-size:1.05rem;font-weight:500;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .co{padding:.8rem 1rem;border-radius:.7rem;font-size:1.15rem}
 .co.f{background:rgba(255,255,255,.22)}
+#cnote{display:none;margin:.7rem .6rem .1rem;font-size:.85rem;opacity:.65;line-height:1.4}
 #toast{position:absolute;left:50%;top:1.2rem;transform:translateX(-50%);max-width:44rem;background:#111e;color:#fff;padding:.6rem 1.2rem;border-radius:2rem;font-size:.95rem;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
 #hint{position:absolute;left:3rem;bottom:.6rem;font-size:.8rem;color:#fff;background:rgba(0,0,0,.45);padding:.2rem .8rem;border-radius:1rem;white-space:nowrap}
 </style></head><body>
@@ -133,7 +134,7 @@ body.light .li{background:#0000000a}
 <div id="settings" class="panel"><h1>Settings</h1><div class="pv" id="sv"><div class="pt" id="settingsBody"></div></div></div>
 <div id="manage" class="panel"><h1>Home apps</h1><div class="pv" id="mv"><div class="pt" id="manageBody"></div></div></div>
 <div id="hiddenp" class="panel"><h1>Hidden apps</h1><div class="pv" id="hv"><div class="pt" id="hiddenBody"></div></div></div>
-<div id="ctx"><div id="cbox"><h2 id="ctitle"></h2><div id="copts"></div></div></div>
+<div id="ctx"><div id="cbox"><h2 id="ctitle"></h2><div id="copts"></div><div id="cnote"></div></div></div>
 <div id="vpn" class="unk"><span class="vd"></span><span id="vt"></span></div>
 <div id="art"><div class="al" id="al0"></div><div class="al" id="al1"></div><div id="artclock" class="c0"><div class="at" id="at"></div><div class="ad" id="ad"></div></div></div>
 <div id="hint"></div><div id="toast"></div>
@@ -147,7 +148,7 @@ function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 /* ---------- browser preview stand-in for the Android bridge ---------- */
 if(mock){var MK=[['com.netflix.ninja','Netflix'],['com.amazon.firetv.youtube','YouTube'],['com.verizon.fios.tvce','Fios TV'],['org.jellyfin.androidtv','Jellyfin'],['org.xbmc.kodi','Kodi'],['org.videolan.vlc','VLC'],['com.plexapp.android','Plex'],['com.tubitv','Tubi'],['com.esaba.downloader','Downloader'],['com.amazon.firebat','Prime Video'],['com.disney.disneyplus','Disney+'],['com.amazon.cloud9','Silk Browser'],['com.amazon.bueller.photos','Photos'],['com.amazon.music.tv','Amazon Music'],['com.amazon.venezia','Appstore'],['com.amazon.tv.settings.v2','Settings'],['com.amazon.imdb.tv.android.app','Freevee']];
  for(var q=18;q<=46;q++)MK.push(['mock.app'+q,'Sample app '+q]);
- L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p);if(p==='mock.app46')setTimeout(function(){window.onLaunchFail&&window.onLaunchFail(p)},50)},appInfo:function(){return 'none'},uninstall:function(p){return p.indexOf('com.amazon.')===0?'system':'none'},info:function(){return JSON.stringify({ver:'0.0-preview',code:0,sdk:28,rel:'9',model:'Browser preview',webview:'Chrome (preview)',service:false,takeover:true,free:3.2e9,total:8e9})},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},homeState:function(){return JSON.stringify({service:false,takeover:true})},setTakeover:function(){},openAmazonHome:function(){return false},openAccessibility:function(){},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
+ L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p);if(p==='mock.app46')setTimeout(function(){window.onLaunchFail&&window.onLaunchFail(p)},50)},appInfo:function(){return 'none'},uninstall:function(p){return p.indexOf('com.amazon.')===0?'system':'none'},info:function(){return JSON.stringify({ver:'0.0-preview',code:0,sdk:28,rel:'9',model:'Browser preview',webview:'Chrome (preview)',service:false,takeover:true,free:3.2e9,total:8e9})},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},backupExists:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('check',!!j,'')},100)},checkUpdate:function(){window.__updCalls=(window.__updCalls||0)+1;setTimeout(function(){window.onUpdate(window.__mockUpdate||JSON.stringify({ok:true,tag:'v0.0.0',url:'https://github.com/Mark-Stephen-Rose/FrameLauncher/releases/latest'}))},200)},homeState:function(){return JSON.stringify({service:false,takeover:true})},setTakeover:function(){},openAmazonHome:function(){return false},openAccessibility:function(){},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
 
 var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce'];
 /* Amazon apps that are never hidden automatically: still useful, or needed to reach system screens */
@@ -162,23 +163,26 @@ function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
 /* ---------- state ---------- */
 var apps=[],vapps=[],icons={},banners={},pins=[],hidden=[],lastJson=null;
 var screen='home',di=0,ai=0,sr=0,sc=0,mi=0,hi=0,grab=false,ctx=null,rowCol=[];
-var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true,vpn:'off',recent:true};
+var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true,vpn:'off',recent:true,shuffle:'off',updates:false};
 var recent=[],ms=0,recentDirty=false,lastLaunch=null,hn=[],gn=[],mn=[],hln=[],mlist=[],hlist=[],offs={},homeDirty=false;
+var freshInstall=false,restoring=false,upd={t:0,tag:'',busy:false,manual:false};
 
 function load(){
+ try{freshInstall=!localStorage.getItem('frameSettings')&&!localStorage.getItem('frameRestoreAsked')}catch(e){freshInstall=false}   // nothing saved yet = a first launch (after a reinstall, say)
  try{pins=JSON.parse(localStorage.getItem('pins')||'null');var s=JSON.parse(localStorage.getItem('frameSettings')||'null');if(s)for(var k in s)settings[k]=s[k];
   if(localStorage.getItem('frameDefaultsVersion')!=='2'){pins=PREF.slice(0,3);settings.wall=0;localStorage.setItem('frameDefaultsVersion','2')}}catch(e){pins=null}
  try{hidden=JSON.parse(localStorage.getItem('frameHidden')||'[]')||[]}catch(e){hidden=[]}
  try{recent=JSON.parse(localStorage.getItem('frameRecent')||'[]');if(!(recent instanceof Array))recent=[];recent=recent.filter(function(p){return typeof p==='string'}).slice(0,12)}catch(e){recent=[]}
+ try{var u=JSON.parse(localStorage.getItem('frameUpdate')||'null');if(u&&typeof u==='object'){upd.t=+u.t||0;upd.tag=typeof u.tag==='string'?u.tag:''}}catch(e){}
  fixSettings()}
 /* Pull every setting back to a legal value (used after loading and after importing a backup file). */
-function fixSettings(){var k,d={theme:['dark','light'],layout:['dock','list','banner'],display:['both','icons','names'],dock:['bottom','center','top'],vpn:['off','country','city']};
+function fixSettings(){var k,d={theme:['dark','light'],layout:['dock','list','banner'],display:['both','icons','names'],dock:['bottom','center','top'],vpn:['off','country','city'],shuffle:['off','daily','wake']};
  for(k in d)if(d[k].indexOf(settings[k])<0)settings[k]=d[k][0];
  if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0;
  if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0;
  if(typeof settings.font!=='number'||settings.font<80||settings.font>130)settings.font=100;
  if(typeof settings.focus!=='number'||settings.focus<90||settings.focus>140)settings.focus=110;
- var b=['glass','clock24','showClock','showDate','artClock','recent'];for(k=0;k<b.length;k++)if(typeof settings[b[k]]!=='boolean')settings[b[k]]=b[k]==='clock24'?false:true}
+ var b=['glass','clock24','showClock','showDate','artClock','recent','updates'];for(k=0;k<b.length;k++)if(typeof settings[b[k]]!=='boolean')settings[b[k]]=(b[k]==='clock24'||b[k]==='updates')?false:true}
 function save(){try{localStorage.setItem('pins',JSON.stringify(pins));localStorage.setItem('frameSettings',JSON.stringify(settings));localStorage.setItem('frameHidden',JSON.stringify(hidden))}catch(e){}}
 function byPkg(p){for(var i=0;i<apps.length;i++)if(apps[i].p===p)return apps[i];return null}
 function isHidden(p){return hidden.indexOf(p)>=0}
@@ -301,6 +305,7 @@ function gridMove(dir){if(!gn.length)return ai;var cur=gn[ai],cy=cur.offsetTop,c
 function opt(l,a,s){return {l:l,a:a,s:s}}
 function defs(){return [
  {t:'BACKGROUND',w:1},
+ {t:function(){return 'SHUFFLE BACKGROUND · '+(settings.shuffle==='daily'?'a new photo each day':settings.shuffle==='wake'?'a new photo each time the Fire TV wakes':'off')},o:[opt('Off','shuffle:off',function(){return settings.shuffle==='off'}),opt('Daily','shuffle:daily',function(){return settings.shuffle==='daily'}),opt('On wake','shuffle:wake',function(){return settings.shuffle==='wake'}),opt('Shuffle now','shufflenow')]},
  {t:'THEME',o:[opt('Dark','theme:dark',function(){return settings.theme==='dark'}),opt('Light','theme:light',function(){return settings.theme==='light'})]},
  {t:'LAYOUT',o:[opt('Dock','layout:dock',function(){return settings.layout==='dock'}),opt('List','layout:list',function(){return settings.layout==='list'}),opt('TV banners','layout:banner',function(){return settings.layout==='banner'})]},
  {t:function(){return 'DOCK POSITION'+(settings.layout==='list'?' · not used by the List layout':'')},o:[opt('Bottom','dock:bottom',function(){return settings.dock==='bottom'}),opt('Center','dock:center',function(){return settings.dock==='center'}),opt('Top','dock:top',function(){return settings.dock==='top'})]},
@@ -315,6 +320,7 @@ function defs(){return [
  {t:function(){return 'BACKUP · version '+appVer+' · file: Downloads/FrameLauncher-settings.json'},o:[opt('Export settings','export'),opt('Import settings','import')]},
  {t:function(){var h=homeInfo();return 'HOME BUTTON · '+(!h?'not available here':!h.service?'accessibility service is OFF, so Home still goes to Fire TV':h.takeover?'Home and start-up open Frame Launcher; Open Fire TV home lets you roam Fire TV freely':'takeover paused')},o:[opt(function(){var h=homeInfo();return 'Takeover '+(h&&h.takeover?'On':'Off')},'hometake',function(){var h=homeInfo();return h&&h.takeover}),opt('Open Fire TV home','homeamazon'),opt('Accessibility settings','a11y')]},
  {t:'AMAZON & SYSTEM',o:[opt('Hide all Amazon apps','amazon'),opt('Fire TV system settings','system')]},
+ {t:function(){return 'UPDATES · '+updText()},o:[opt('Off','updates:off',function(){return !settings.updates}),opt('Check daily','updates:on',function(){return settings.updates}),opt('Check now','updatecheck')]},
  {t:'ABOUT & STORAGE',info:1,o:[opt('Refresh details','about')]},
  {t:'',o:[opt('Close settings','close')]}]}
 var sdefs=defs(),selEls=[],secEls=[],hdEls=[],wallEls=[];
@@ -383,13 +389,15 @@ function hidKey(k){if(k===38)hi=Math.max(0,hi-1);else if(k===40)hi=Math.min(hlis
 /* ---------- Menu-key popup in All apps ---------- */
 function openCtx(){var a=gnApp(ai);if(!a)return;var pinned=pins.indexOf(a.p)>=0;
  ctx={sel:0,p:a.p,n:a.n,o:[['pin',pinned?'Unpin from Home':'Pin to Home'],['hide','Hide this app'],['info','App info'],['uninstall','Uninstall'],['cancel','Cancel']]};
- $('ctitle').textContent=a.n;var h='';for(var i=0;i<ctx.o.length;i++)h+='<div class="co">'+ctx.o[i][1]+'</div>';
- $('copts').innerHTML=h;$('ctx').style.display='block';ctxFocus();hints()}
+ showCtx(a.n,'')}
+function showCtx(title,note){$('ctitle').textContent=title;var h='';for(var i=0;i<ctx.o.length;i++)h+='<div class="co">'+ctx.o[i][1]+'</div>';
+ $('copts').innerHTML=h;$('cnote').textContent=note;$('cnote').style.display=note?'block':'none';$('ctx').style.display='block';ctxFocus();hints()}
 function ctxFocus(){var c=$('copts').childNodes;for(var i=0;i<c.length;i++)c[i].className='co'+(i===ctx.sel?' f':'')}
-function closeCtx(){ctx=null;$('ctx').style.display='none';hints()}
+function closeCtx(){ctx=null;$('ctx').style.display='none';$('cnote').style.display='none';hints()}
 function ctxKey(k){
  if(k===38)ctx.sel=Math.max(0,ctx.sel-1);else if(k===40)ctx.sel=Math.min(ctx.o.length-1,ctx.sel+1);
- else if(k===13||k===23){var a=ctx.o[ctx.sel][0],p=ctx.p,n=ctx.n;closeCtx();
+ else if(k===13||k===23){var a=ctx.o[ctx.sel][0],p=ctx.p,n=ctx.n,kind=ctx.kind;closeCtx();
+  if(kind==='restore'){if(a==='restore'){restoring=true;try{L.importSettings()}catch(e){restoring=false;toast('Restore is not available here')}}return true}
   if(a==='pin'){var x=pins.indexOf(p);if(x>=0)pins.splice(x,1);else pins.push(p);save();buildHome();buildGrid();toast(x>=0?'Removed from Home':'Added to Home')}
   else if(a==='hide'){var y=pins.indexOf(p);if(y>=0)pins.splice(y,1);if(!isHidden(p))hidden.push(p);save();recompute();buildHome();buildGrid();refreshSettings();toast(n+' hidden · restore in Settings > Hidden apps')}
   else if(a==='info'){var r='none';try{r=L.appInfo?L.appInfo(p):'none'}catch(e){}if(r!=='ok')toast('App info isn\u2019t available on this Fire TV')}
@@ -404,7 +412,9 @@ var appVer='';try{appVer=(L.version&&L.version())||'unknown'}catch(e){appVer='un
 var importArm=0;
 /* Export/import go through a file in Downloads, so it survives uninstalling the app. */
 window.onBackup=function(kind,ok,data){
+ if(kind==='check'){if(ok)openRestore();return}   // first-launch look for a backup: stay quiet unless one is there
  if(kind==='export'){toast(ok?'Settings saved to '+data:'Export failed: '+data);return}
+ var was=restoring;restoring=false;
  if(!ok){toast(data);return}
  var j=null,k,st;try{j=JSON.parse(data)}catch(e){}
  if(!j||j.app!=='FrameLauncher'||!j.settings||typeof j.settings!=='object'){toast('That file is not a Frame Launcher backup');return}
@@ -413,20 +423,71 @@ window.onBackup=function(kind,ok,data){
  if(j.pins instanceof Array)pins=j.pins.filter(function(p){return typeof p==='string'&&byPkg(p)});
  if(j.hidden instanceof Array)hidden=j.hidden.filter(function(p){return typeof p==='string'});
  hidden=hidden.filter(function(p){return pins.indexOf(p)<0});   // pinned wins, so an app is never on Home yet missing from All apps
- di=0;offs.home=0;save();applyLook();tick();lastAct=Date.now();rebuildAll();pollVpn();toast('Settings imported')};
+ di=0;offs.home=0;save();applyLook();tick();lastAct=Date.now();rebuildAll();pollVpn();toast(was?'Settings restored':'Settings imported')};
+
+/* ---------- restore on first launch ----------
+   After a reinstall nothing is saved yet. Once, ask Android whether Downloads holds a backup (the first time this asks
+   for storage access) and offer to restore it. Saying no, or having no backup, ends it; Settings > Import still works. */
+function restoreCheck(){if(!freshInstall)return;freshInstall=false;
+ try{localStorage.setItem('frameRestoreAsked','1')}catch(e){}
+ try{if(L.backupExists)L.backupExists()}catch(e){}}
+function openRestore(){if(ctx)return;ctx={sel:0,kind:'restore',o:[['restore','Restore from Downloads'],['skip','Not now']]};
+ showCtx('Restore your settings?','Found FrameLauncher-settings.json in Downloads. It restores your look, pinned apps and hidden apps.')}
+
+/* ---------- background shuffle ----------
+   Daily: the first time Frame Launcher is looked at on a new calendar day. On wake: each time the Fire TV wakes from sleep
+   (and at start-up). Never while Settings is open, and never the same photo twice in a row. */
+function pickWall(){var n=wallpapers.length,i;if(n<2)return settings.wall;do{i=Math.floor(Math.random()*n)}while(i===settings.wall);return i}
+function shuffleNow(quiet){settings.wall=pickWall();save();applyLook();refreshSettings();if(!quiet)toast('Background: '+wallpapers[settings.wall][0])}
+function dayKey(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function markShuffleDay(){try{localStorage.setItem('frameShuffleDay',dayKey())}catch(e){}}
+function shuffleDaily(){if(settings.shuffle!=='daily'||screen==='settings')return;var last='';
+ try{last=localStorage.getItem('frameShuffleDay')||''}catch(e){}
+ if(last===dayKey())return;markShuffleDay();if(last)shuffleNow(true)}
+
+/* ---------- update check (opt-in) ----------
+   Asks GitHub for the newest release (Java: checkUpdate) at most once a day, only if Updates is on, or when you press
+   Check now. It only tells you; nothing is downloaded or installed. */
+var REL_PAGE='github.com/Mark-Stephen-Rose/FrameLauncher/releases/latest';
+function verNum(s){var m=String(s).replace(/^v/i,'').split('-')[0].split('.'),r=[],i;for(i=0;i<3;i++)r.push(parseInt(m[i],10)||0);return r}
+function isNewer(a,b){var x=verNum(a),y=verNum(b),i;for(i=0;i<3;i++)if(x[i]!==y[i])return x[i]>y[i];return false}
+function updAvailable(){return !!upd.tag&&isNewer(upd.tag,appVer)}
+function vtxt(t){return String(t).replace(/^v/i,'')}
+function updText(){
+ if(upd.busy)return 'checking…';
+ if(updAvailable())return 'version '+vtxt(upd.tag)+' is available (you have '+appVer+'). Download it from '+REL_PAGE;
+ if(upd.t)return 'up to date (version '+appVer+')'+(settings.updates?' · checks once a day':' · automatic checks are off');
+ return settings.updates?'on · will check soon':'off · opt-in: asks GitHub for the newest release once a day. Check now works any time'}
+function updateCheck(manual){if(upd.busy)return;upd.busy=true;upd.manual=!!manual;refreshSettings();
+ try{if(!L.checkUpdate)throw 0;L.checkUpdate()}catch(e){upd.busy=false;upd.manual=false;refreshSettings();if(manual)toast('Update check is not available here')}}
+function maybeUpdate(){if(settings.updates&&!upd.busy&&Date.now()-upd.t>864e5)updateCheck(false)}
+window.onUpdate=function(s){var j=null,man=upd.manual,seen='';upd.busy=false;upd.manual=false;try{j=JSON.parse(s)}catch(e){}
+ if(!j||!j.ok||typeof j.tag!=='string'||!j.tag){upd.t=Date.now()-72000000;   // failed (offline?): try again in about 4 hours
+  if(man)toast('Couldn’t check for updates. Is the Fire TV online?');refreshSettings();return}
+ upd.t=Date.now();upd.tag=j.tag;try{localStorage.setItem('frameUpdate',JSON.stringify({t:upd.t,tag:upd.tag}))}catch(e){}
+ if(updAvailable()){try{seen=localStorage.getItem('frameUpdateSeen')||''}catch(e){}
+  if(man||seen!==upd.tag){toast('Version '+vtxt(upd.tag)+' is available (you have '+appVer+')');try{localStorage.setItem('frameUpdateSeen',upd.tag)}catch(e){}}}
+ else if(man)toast('You’re up to date (version '+appVer+')');
+ refreshSettings();if(aboutTxt)loadAbout()};
 var aboutTxt='';
 function fmtB(b){return b>=1e9?(b/1e9).toFixed(1)+' GB':Math.round(b/1e6)+' MB'}
 function loadAbout(){var o=null,t;try{o=JSON.parse(L.info())}catch(e){}
  if(!o||o.ver===undefined)t='Details are shown when running on the Fire TV.';
  else t='Frame Launcher v'+o.ver+' (build '+o.code+')\nDevice: '+o.model+' · Android '+o.rel+' (API '+o.sdk+')\nWebView: '+(o.webview||'unknown')+
   '\nHome button: '+(o.service?'service running':'service off')+(o.takeover?' · takeover on':' · takeover off')+
-  '\nStorage: '+fmtB(o.free)+' free of '+fmtB(o.total)+(o.free<5e8?' · very low. Uninstall apps you don\u2019t use (All apps > Menu)':o.free<1e9?' · getting low':'');
+  '\nStorage: '+fmtB(o.free)+' free of '+fmtB(o.total)+(o.free<5e8?' · very low. Uninstall apps you don\u2019t use (All apps > Menu)':o.free<1e9?' · getting low':'')+
+  (updAvailable()?'\nUpdate: version '+vtxt(upd.tag)+' is available':'');
  aboutTxt=t;if(selEls.length)refreshSettings()}
 function homeInfo(){try{return JSON.parse(L.homeState())}catch(e){return null}}
 function onAction(a){
  if(a==='about'){loadAbout();toast('Details refreshed');return}
  if(a==='recentclear'){recent=[];try{localStorage.removeItem('frameRecent')}catch(e){}buildGrid();toast('Recent list cleared');return}
  if(a.indexOf('recent:')===0){settings.recent=a.split(':')[1]==='on';save();buildGrid();refreshSettings();return}
+ if(a.indexOf('shuffle:')===0){settings.shuffle=a.split(':')[1];fixSettings();if(settings.shuffle==='daily')markShuffleDay();save();refreshSettings();
+  toast(settings.shuffle==='daily'?'A new background each day':settings.shuffle==='wake'?'A new background each time the Fire TV wakes':'Background shuffle is off');return}
+ if(a==='shufflenow'){shuffleNow(false);return}
+ if(a.indexOf('updates:')===0){settings.updates=a.split(':')[1]==='on';save();refreshSettings();if(settings.updates)maybeUpdate();return}
+ if(a==='updatecheck'){updateCheck(true);return}
  if(a==='hometake'){var h=homeInfo();if(!h){toast('Not available here');return}try{L.setTakeover(!h.takeover)}catch(e){}refreshSettings();return}
  if(a==='homeamazon'){var ok=false;try{ok=L.openAmazonHome()}catch(e){}if(!ok)toast('Could not find the Fire TV home screen');return}
  if(a==='a11y'){try{L.openAccessibility()}catch(e){}return}
@@ -526,8 +587,10 @@ function stopArt(){if(!artOn)return;artOn=false;clearInterval(artTimer);clearInt
  $('art').style.display='none';$('al0').style.backgroundImage='';$('al1').style.backgroundImage='';lastAct=Date.now();
  try{if(L.art)L.art(false)}catch(e){}}
 window.onWake=function(){lastAct=Date.now();stopArt()};
-window.onResume=function(){lastAct=Date.now();lastChk=lastAct;stopArt();pollVpn();
- if(recentDirty){recentDirty=false;if(screen==='all')buildGrid(lastLaunch&&lastLaunch.p,lastLaunch&&lastLaunch.inRecent)}};
+window.onResume=function(woke){lastAct=Date.now();lastChk=lastAct;stopArt();pollVpn();   // woke: the Fire TV slept since Frame Launcher was last in front
+ if(recentDirty){recentDirty=false;if(screen==='all')buildGrid(lastLaunch&&lastLaunch.p,lastLaunch&&lastLaunch.inRecent)}
+ if(woke===true&&settings.shuffle==='wake'&&screen!=='settings')shuffleNow(true);
+ shuffleDaily();maybeUpdate()};
 setInterval(function(){var n=Date.now();
  if(n-lastChk>15000)lastAct=n;                            // timers were paused (another app, TV asleep): that is not idle time
  lastChk=n;if(!artOn&&settings.artIdle>0&&n-lastAct>settings.artIdle*60000)startArt()},5000);
@@ -559,11 +622,16 @@ function pollVpn(){if(settings.vpn==='off')return;var r=null,n=Date.now();
  if(vpn.asked===0||n-vpn.asked>(vpn.loc?600000:Math.min(15000*(1+vpn.fail),120000)))geoAsk();
  renderVpn()}
 setInterval(function(){if(!artOn)pollVpn()},10000);
+setInterval(function(){shuffleDaily()},60000);          // a new day can start while the launcher is on screen
+setInterval(function(){maybeUpdate()},3600000);
 
 function tick(){var n=new Date();
  $('t').textContent=timeStr(n);
  $('d').textContent=dateStr(n)}
 load();tick();setInterval(tick,20000);buildSettings();refreshApps();pollVpn();
+/* start-up: On wake also counts a fresh start (boot, or the system closed the launcher while the TV slept) */
+if(settings.shuffle==='wake')shuffleNow(true);else shuffleDaily();
+maybeUpdate();restoreCheck();
 window.onresize=function(){focusHome();applyFrost()};
 })();
 </script></body></html>

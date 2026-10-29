@@ -1,0 +1,12 @@
+{
+  "name": "framelauncher-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Headless-browser tests for the Frame Launcher home screen (app/src/main/assets/index.html)",
+  "scripts": {
+    "test": "node --test ui.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}

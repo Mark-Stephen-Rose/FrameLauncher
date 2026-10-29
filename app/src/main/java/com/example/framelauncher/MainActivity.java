@@ -73,6 +73,11 @@ public class MainActivity extends Activity {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private String webUa = "";   // set on the UI thread, read by Bridge.info()
     private static final String GEO_URL = "https://ipwho.is/?fields=success,country,country_code,region,city";
+    /* Update check (opt-in in Settings): newest published, non-draft, non-pre-release GitHub release. */
+    private static final String RELEASE_URL = "https://api.github.com/repos/Mark-Stephen-Rose/FrameLauncher/releases/latest";
+    /* On wake: set when the screen goes off, read (and cleared) the next time Frame Launcher comes to the front. */
+    private volatile boolean slept = false;
+    private BroadcastReceiver screenReceiver;
     private final Map<String, String[]> artCache = new HashMap<String, String[]>(); // art thread only
 
     private String encode(Drawable d, int w, int h) {
@@ -134,10 +139,15 @@ public class MainActivity extends Activity {
         f.addAction(Intent.ACTION_PACKAGE_REPLACED);
         f.addDataScheme("package");
         registerReceiver(pkgReceiver, f);
+        screenReceiver = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) { slept = true; }
+        };
+        registerReceiver(screenReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF));
     }
 
     @Override protected void onDestroy() {
         try { unregisterReceiver(pkgReceiver); } catch (Exception ignored) { }
+        try { unregisterReceiver(screenReceiver); } catch (Exception ignored) { }
         super.onDestroy();
     }
 
@@ -191,7 +201,9 @@ public class MainActivity extends Activity {
         super.onResume();
         if (web != null) { web.resumeTimers(); web.onResume(); }
         HomeService.setAmazonMode(this, false);   // Frame is in front again, so the Home button comes back here
-        js("window.onResume&&onResume()");
+        boolean woke = slept;   // the Fire TV went to sleep since we were last in front
+        slept = false;
+        js("window.onResume&&onResume(" + woke + ")");
         js("window.refreshApps&&refreshApps()");
     }
     @Override protected void onNewIntent(Intent i) {   // Home pressed
@@ -438,6 +450,66 @@ public class MainActivity extends Activity {
                         }
                     }});
                 }});
+            }});
+        }
+
+        /* First-launch check: is there a backup file in Downloads? Calls window.onBackup("check", true|false, "").
+           Asks for storage access the first time; if that is refused the answer is simply false. */
+        @JavascriptInterface public void backupExists() {
+            runOnUiThread(new Runnable() { public void run() {
+                withStorage("check", new Runnable() { public void run() {
+                    io.execute(new Runnable() { public void run() {
+                        File f = new File(Environment.getExternalStoragePublicDirectory(
+                                Environment.DIRECTORY_DOWNLOADS), BACKUP_NAME);
+                        backupResult("check", f.isFile() && f.length() > 0 && f.length() <= 200000, "");
+                    }});
+                }});
+            }});
+        }
+
+        /* Asynchronous: asks GitHub for the newest release, then calls window.onUpdate(json) with
+           {"ok":true,"tag":"v0.8.0","url":"...","apk":"..."} or {"ok":false}. Nothing is downloaded or installed. */
+        @JavascriptInterface public void checkUpdate() {
+            net.execute(new Runnable() { public void run() {
+                String out = "{\"ok\":false}";
+                HttpURLConnection h = null;
+                try {
+                    h = (HttpURLConnection) new URL(RELEASE_URL).openConnection();
+                    h.setConnectTimeout(8000);
+                    h.setReadTimeout(8000);
+                    h.setRequestProperty("Accept", "application/vnd.github+json");
+                    h.setRequestProperty("User-Agent", "FrameLauncher");   // GitHub's API refuses requests without one
+                    if (h.getResponseCode() == 200) {
+                        BufferedReader r = new BufferedReader(new InputStreamReader(h.getInputStream(), "UTF-8"));
+                        StringBuilder sb = new StringBuilder();
+                        char[] buf = new char[4096];
+                        int n;
+                        while ((n = r.read(buf)) > 0 && sb.length() < 300000) sb.append(buf, 0, n);
+                        r.close();
+                        JSONObject j = new JSONObject(sb.toString());
+                        String tag = j.optString("tag_name");
+                        if (tag.length() > 0 && !j.optBoolean("draft", false) && !j.optBoolean("prerelease", false)) {
+                            String apk = "";
+                            JSONArray as = j.optJSONArray("assets");
+                            if (as != null) {
+                                for (int k = 0; k < as.length(); k++) {
+                                    JSONObject a = as.optJSONObject(k);
+                                    if (a != null && a.optString("name").endsWith(".apk")) {
+                                        apk = a.optString("browser_download_url");
+                                        break;
+                                    }
+                                }
+                            }
+                            out = new JSONObject().put("ok", true).put("tag", tag)
+                                    .put("url", j.optString("html_url")).put("apk", apk).toString();
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    if (h != null) h.disconnect();
+                }
+                final String call = "window.onUpdate&&onUpdate(" + JSONObject.quote(out) + ")";
+                runOnUiThread(new Runnable() { public void run() { js(call); } });
             }});
         }
 
