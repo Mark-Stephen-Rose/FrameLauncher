@@ -29,8 +29,11 @@ jobs:
             echo "::error::Tag '$GITHUB_REF_NAME' must look like v1.2.3"; exit 1
           fi
           IFS=. read -r MA MI PA <<< "$VER"
+          if [ $((10#$MI)) -gt 99 ] || [ $((10#$PA)) -gt 99 ]; then
+            echo "::error::Minor and patch numbers must be 99 or less (the version code packs them into two digits)"; exit 1
+          fi
           echo "VER=$VER" >> "$GITHUB_ENV"
-          echo "CODE=$((MA * 10000 + MI * 100 + PA))" >> "$GITHUB_ENV"
+          echo "CODE=$((10#$MA * 10000 + 10#$MI * 100 + 10#$PA))" >> "$GITHUB_ENV"
 
       - name: Restore keystore
         run: |
