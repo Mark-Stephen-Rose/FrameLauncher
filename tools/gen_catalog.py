@@ -17,7 +17,9 @@ WALL = os.path.join(HERE, '..', 'app', 'src', 'main', 'assets', 'wallpaper')
 NAMES = [('alpine','Alpine glow'),('misty','Misty coast'),('cove','Quiet cove'),('forest','Forest mist'),
  ('valley','Mountain valley'),('night','Desert stars'),('peaks','Blue peaks'),('bridge','Bridge at dusk'),
  ('ridge','Sunlit ridges'),('golden','Golden hour'),('summit','Sunlit summits'),('goldcoast','Gold Coast dusk'),
- ('sydney','Sydney Harbour'),('amber','Amber hills'),('mint','Mint wave')]
+ ('sydney','Sydney Harbour'),('amber','Amber hills')]
+
+SOURCES = {e['id']: e for e in json.load(open(os.path.join(WALL, 'SOURCES.json')))}   # photographer + original page
 
 W, H = 1280, 720           # layout reference size (1rem = 20px at 1280 wide)
 TEXT_LIGHT = np.array([244, 241, 233], float)   # body colour, dark theme
@@ -90,6 +92,7 @@ for wid, name in NAMES:
     entries.append({
         'id': wid, 'name': name, 'src': 'wallpaper/%s.jpg' % wid, 'thumb': 'wallpaper/%s-thumb.jpg' % wid,
         'panel': 'wallpaper/%s-panel.jpg' % wid,
+        'credit': SOURCES[wid]['credit'], 'source': SOURCES[wid]['source'],   # shown in Settings > About
         'clock': ctext, 'clockScrim': cscrim,        # clock text colour on the bare photo, plus soft scrim strength
         'label': lt,                                  # app label colour when Glass is off
         'veil': glass,                                # veil alpha per surface and theme when Glass is on

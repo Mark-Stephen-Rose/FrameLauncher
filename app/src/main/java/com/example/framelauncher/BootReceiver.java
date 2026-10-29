@@ -4,11 +4,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/** Opens Frame Launcher when the Fire TV finishes starting up (if the Home button takeover is on). */
+/** Opens Frame Launcher when the device finishes starting up (if the Home button takeover is on). */
 public class BootReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context c, Intent i) {
         if (i == null || !Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) return;
-        HomeService.setAmazonMode(c, false);   // a restart always starts back in Frame Launcher
+        HomeService.setStockMode(c, false);   // a restart always starts back in Frame Launcher
         if (HomeService.prefs(c).getBoolean(HomeService.KEY_TAKEOVER, true)) HomeService.openFrame(c);
     }
 }

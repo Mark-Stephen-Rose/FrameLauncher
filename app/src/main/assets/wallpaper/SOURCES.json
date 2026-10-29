@@ -117,15 +117,6 @@
     "source": "https://unsplash.com/photos/vazZtmYFgFY"
   },
   {
-    "id": "mint",
-    "name": "Mint wave",
-    "src": "wallpaper/mint.jpg",
-    "thumb": "wallpaper/mint-thumb.jpg",
-    "panel": "wallpaper/mint-panel.jpg",
-    "credit": "MagicPattern",
-    "source": "https://unsplash.com/photos/87PP9Zd7MNo"
-  },
-  {
     "id": "alpine",
     "name": "Alpine glow",
     "src": "wallpaper/alpine.jpg",

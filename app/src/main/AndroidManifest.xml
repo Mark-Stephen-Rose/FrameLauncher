@@ -5,7 +5,7 @@
     <!-- Settings export/import writes FrameLauncher-settings.json to Downloads -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <!-- Start Frame Launcher when the Fire TV starts up -->
+    <!-- Start Frame Launcher when the device starts up -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
     <uses-feature android:name="android.software.leanback" android:required="false"/>
@@ -27,7 +27,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
-        <!-- Home button takeover: watches for Amazon's launcher and brings Frame Launcher back (turn on in Accessibility) -->
+        <!-- Home button takeover: watches for the stock launcher and brings Frame Launcher back (turn on in Accessibility) -->
         <service android:name=".HomeService" android:exported="true" android:label="Frame Launcher Home button"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
