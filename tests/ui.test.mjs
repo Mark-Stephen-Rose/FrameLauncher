@@ -2,7 +2,7 @@
 
    The page runs here exactly as it does inside the Android WebView, except that the native "Launcher" bridge is replaced
    by the stand-in at the top of index.html (browser preview mode). Everything is driven with the keyboard, the way the
-   Fire TV remote drives it. Nothing here can tell you how a real stick behaves; it catches page mistakes before a build.
+   TV remote drives it. Nothing here can tell you how a real stick behaves; it catches page mistakes before a build.
 
    Run:   cd tests && npm install && npx playwright install chromium && npm test
    Local Chrome instead of Playwright's:   CHROME_PATH=/path/to/chrome npm test   (CHROME_ARGS="--flag --flag" adds flags) */
@@ -127,7 +127,18 @@ test('About & storage shows device details and free storage', T, async () => {
     await openSettings(page);
     const t = await page.$eval('#settingsBody .infob', (e) => e.textContent);
     assert.match(t, /Storage: 3\.2 GB free of 8\.0 GB/);
-    assert.doesNotMatch(t, /low/);
+    assert.doesNotMatch(t, /Storage:[^\n]*(low|very)/);
+  });
+});
+
+test('About lists a photographer credit for every bundled wallpaper', T, async () => {
+  await withPage({}, async ({ page }) => {
+    await openSettings(page);
+    const t = await page.$eval('#settingsBody .infob', (e) => e.textContent);
+    const names = await page.evaluate(() => window.CleanFrameWallpapers.map((w) => w.name));
+    assert.equal(names.length, 14);
+    assert.match(t, /Wallpaper photos from Unsplash:/);
+    for (const n of names) assert.match(t, new RegExp(n + ' by [A-Z]'), 'no credit for ' + n);
   });
 });
 
@@ -302,10 +313,10 @@ test('Menu popup: App info and Uninstall explain themselves when unavailable', T
     await openAll(page);
     await press(page, 'm'); await press(page, 'ArrowDown', 2); await press(page, 'Enter');
     assert.match(await toastOf(page), /App info isn.t available/);
-    // the first app in the list is the Amazon Appstore, which is part of Fire TV
+    // the first app in the list is the Appstore, which is part of the system
     await press(page, 'm'); await press(page, 'ArrowDown', 3); await press(page, 'Enter');
-    assert.match(await toastOf(page), /part of Fire TV and can.t be uninstalled/);
-    // a non-Amazon app: the stand-in has no uninstaller
+    assert.match(await toastOf(page), /part of the system and can.t be uninstalled/);
+    // a non-stock app: the stand-in has no uninstaller
     await page.evaluate(() => { for (const t of document.querySelectorAll('#grid .tile')) if (t.getAttribute('data-p') === 'org.xbmc.kodi') t.scrollIntoView(); });
     for (let i = 0; i < 80 && (await page.evaluate(() => document.querySelector('#grid .tile.f').getAttribute('data-p'))) !== 'org.xbmc.kodi'; i++) await press(page, 'ArrowRight');
     await press(page, 'm'); await press(page, 'ArrowDown', 3); await press(page, 'Enter');
@@ -326,7 +337,7 @@ test('Menu popup: Hide removes the app and Settings can restore it; Pin adds it 
     assert.equal(await screenOf(page), 'hidden');
     const names = await page.$$eval('#hiddenBody .li .nm2', (e) => e.map((x) => x.textContent));
     assert.ok(names.includes(name), name + ' should be listed under Hidden apps');
-    await press(page, 'ArrowDown', names.indexOf(name));   // the list also holds the Amazon apps hidden on first run
+    await press(page, 'ArrowDown', names.indexOf(name));   // the list also holds the stock apps hidden on first run
     await press(page, 'Enter');
     assert.match(await toastOf(page), new RegExp(name.replace(/[+]/g, '\\+') + ' is visible again'));
     await press(page, 'Escape'); await press(page, 'Escape'); await openAll(page);
@@ -520,7 +531,7 @@ test('Shuffle: Shuffle now always picks a different photo', T, async () => {
     for (let i = 0; i < 40; i++) {
       const w = (await saved(page)).wall;
       if (i > 0) assert.notEqual(w, prev, 'repeated the same photo');
-      assert.ok(Number.isInteger(w) && w >= 0 && w < 15);
+      assert.ok(Number.isInteger(w) && w >= 0 && w < 14);
       seen.add(w); prev = w;
       await press(page, 'Enter');
     }

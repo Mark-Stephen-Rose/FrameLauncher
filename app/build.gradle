@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId 'com.example.framelauncher'
         minSdk 22
-        targetSdk 28   // Fire OS 7 = Android 9; avoids package-visibility limits
+        targetSdk 28   // Android 9 behaviour; avoids package-visibility limits
         versionCode verCode
         versionName verName
     }

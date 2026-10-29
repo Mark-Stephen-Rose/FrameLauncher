@@ -200,8 +200,8 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (web != null) { web.resumeTimers(); web.onResume(); }
-        HomeService.setAmazonMode(this, false);   // Frame is in front again, so the Home button comes back here
-        boolean woke = slept;   // the Fire TV went to sleep since we were last in front
+        HomeService.setStockMode(this, false);   // Frame is in front again, so the Home button comes back here
+        boolean woke = slept;   // the device went to sleep since we were last in front
         slept = false;
         js("window.onResume&&onResume(" + woke + ")");
         js("window.refreshApps&&refreshApps()");
@@ -287,7 +287,7 @@ public class MainActivity extends Activity {
             }});
         }
 
-        /* Opens Android's own App info screen for the package. Returns "ok" or "none" (this Fire TV has no such screen). */
+        /* Opens Android's own App info screen for the package. Returns "ok" or "none" (this device has no such screen). */
         @JavascriptInterface public String appInfo(final String pkg) {
             try {
                 final Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))
@@ -301,7 +301,7 @@ public class MainActivity extends Activity {
         }
 
         /* Asks Android to uninstall the package (the system shows its own confirmation).
-           Returns "ok", "system" (part of Fire TV, cannot be removed) or "none" (no uninstaller available). */
+           Returns "ok", "system" (part of the system, cannot be removed) or "none" (no uninstaller available). */
         @JavascriptInterface public String uninstall(final String pkg) {
             try {
                 ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
@@ -404,18 +404,18 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void setTakeover(boolean on) {
             HomeService.prefs(MainActivity.this).edit()
-                    .putBoolean(HomeService.KEY_TAKEOVER, on).putBoolean(HomeService.KEY_AMAZON_MODE, false).apply();
+                    .putBoolean(HomeService.KEY_TAKEOVER, on).putBoolean(HomeService.KEY_STOCK_MODE, false).apply();
         }
 
-        /* Escape hatch: open Amazon's own home screen and leave it alone until Frame Launcher is opened again. */
-        @JavascriptInterface public boolean openAmazonHome() {
-            for (String pkg : HomeService.AMAZON_LAUNCHERS) {
+        /* Escape hatch: open the stock home screen and leave it alone until Frame Launcher is opened again. */
+        @JavascriptInterface public boolean openStockHome() {
+            for (String pkg : HomeService.STOCK_LAUNCHERS) {
                 final Intent h = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
                         .setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 if (getPackageManager().resolveActivity(h, 0) == null) continue;
-                HomeService.setAmazonMode(MainActivity.this, true);
+                HomeService.setStockMode(MainActivity.this, true);
                 runOnUiThread(new Runnable() { public void run() {
-                    try { startActivity(h); } catch (Exception ignored) { HomeService.setAmazonMode(MainActivity.this, false); }
+                    try { startActivity(h); } catch (Exception ignored) { HomeService.setStockMode(MainActivity.this, false); }
                 }});
                 return true;
             }
