@@ -1,7 +1,7 @@
 plugins { id 'com.android.application' }
 // The release workflow passes the version from the git tag (v0.6.0 -> name 0.6.0, code 600).
-def verName = project.findProperty('appVersionName') ?: '0.6.0'
-def verCode = (project.findProperty('appVersionCode') ?: '600') as int
+def verName = project.findProperty('appVersionName') ?: '0.8.0'
+def verCode = (project.findProperty('appVersionCode') ?: '800') as int
 // Signing details come from the environment (GitHub secrets). Without them, release builds are simply unsigned.
 def haveKey = System.getenv('KEYSTORE_FILE') != null
 android {

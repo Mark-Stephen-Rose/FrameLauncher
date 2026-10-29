@@ -5,3 +5,6 @@ keystore*.b64
 build/
 .gradle/
 local.properties
+
+# test tooling
+node_modules/
