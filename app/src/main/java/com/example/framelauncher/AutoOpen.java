@@ -33,7 +33,7 @@ final class AutoOpen {
     static void runSoon(final Context c) {
         final Context app = c.getApplicationContext();
         if (app(app).length() == 0) return;
-        H.postDelayed(new Runnable() { public void run() { run(app, false); } }, 3000);
+        H.postDelayed(new Runnable() { public void run() { AutoOpen.run(app, false); } }, 3000);
     }
 
     /** Opens the chosen app now. force = true skips the once-a-minute guard (the "Test now" button). */
