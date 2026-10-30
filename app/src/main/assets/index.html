@@ -547,7 +547,7 @@ function onAction(a){
 function rebuildAll(){recompute();buildHome();buildGrid();refreshSettings();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden()}
 function go(s){screen=s;ctx=null;grab=false;$('ctx').style.display='none';applyLook();
  if(homeDirty&&(s==='home'||s==='all')){buildHome();buildGrid();homeDirty=false}
- if(s==='manage')buildManage();else if(s==='hidden')buildHidden();else if(s==='settings'){loadAbout();focusSet()}else if(s==='all'){buildGrid();focusGrid()}else focusHome();hints()}
+ if(s==='manage')buildManage();else if(s==='hidden')buildHidden();else if(s==='settings'){loadAbout();focusSet()}else if(s==='all'){buildGrid();focusGrid()}else{fitDock();focusHome()}hints()}
 function activate(a){if(!a)return;if(a.p==='__all'){ai=0;offs.grid=0;go('all')}else if(a.p==='__settings')go('settings');else launchApp(a.p)}
 
 /* ---------- native hooks (Back / Home / Menu) ---------- */
