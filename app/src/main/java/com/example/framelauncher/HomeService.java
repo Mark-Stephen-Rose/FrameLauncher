@@ -1,8 +1,10 @@
 package com.example.framelauncher;
 
 import android.accessibilityservice.AccessibilityService;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
@@ -24,8 +26,10 @@ public class HomeService extends AccessibilityService {
     static final String[] STOCK_LAUNCHERS = { "com.amazon.tv.launcher", "com.amazon.firelauncher" };
 
     static volatile boolean running = false;
+    static volatile String lastPkg = null;   // the app whose window appeared last (AutoOpen uses it to know you are still there)
     private long lastLaunch = 0;
     private long ignoreStockUntil = 0;
+    private BroadcastReceiver wakeReceiver;
 
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
 
@@ -41,11 +45,24 @@ public class HomeService extends AccessibilityService {
         } catch (Exception ignored) { }
     }
 
-    @Override protected void onServiceConnected() { running = true; }
+    @Override protected void onServiceConnected() {
+        running = true;
+        // The screen coming on is the "wake" for the auto-open app. A manifest receiver cannot hear it, but a running service can.
+        if (wakeReceiver == null) {
+            wakeReceiver = new BroadcastReceiver() {
+                @Override public void onReceive(Context c, Intent i) { AutoOpen.runSoon(c); }
+            };
+            try { registerReceiver(wakeReceiver, new IntentFilter(Intent.ACTION_SCREEN_ON)); } catch (Exception ignored) { }
+        }
+    }
 
-    @Override public boolean onUnbind(Intent intent) { running = false; return super.onUnbind(intent); }
+    private void stopWakeReceiver() {
+        if (wakeReceiver != null) { try { unregisterReceiver(wakeReceiver); } catch (Exception ignored) { } wakeReceiver = null; }
+    }
 
-    @Override public void onDestroy() { running = false; super.onDestroy(); }
+    @Override public boolean onUnbind(Intent intent) { running = false; stopWakeReceiver(); return super.onUnbind(intent); }
+
+    @Override public void onDestroy() { running = false; stopWakeReceiver(); super.onDestroy(); }
 
     @Override public void onInterrupt() { }
 
@@ -60,6 +77,7 @@ public class HomeService extends AccessibilityService {
         CharSequence cs = e.getPackageName();
         if (cs == null) return;
         String pkg = cs.toString();
+        if (!pkg.equals("com.android.systemui") && !pkg.equals("android")) lastPkg = pkg;
         SharedPreferences sp = prefs(this);
         long now = SystemClock.elapsedRealtime();
         boolean stock = false;

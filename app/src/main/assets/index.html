@@ -55,14 +55,19 @@ body.dp-top:not(.listMode) #vpn{top:auto;bottom:3rem}
 #dock{display:none;position:absolute;left:3rem;right:3rem;bottom:3.5rem;overflow:hidden}
 body.scr-home #dock{display:block}
 #track{position:relative;white-space:nowrap;padding:calc(.9rem + (var(--focus) - 1) * 5rem) calc(.8rem + (var(--focus) - 1) * 6rem);transition:transform .25s ease-out;will-change:transform}
-.listMode #dock{top:13rem;bottom:2.5rem;left:4rem;right:4rem}
+.listMode #dock{top:13rem;bottom:2.5rem;left:4rem;right:auto;width:24rem}   /* about a third of the screen, so the photo shows */
+body.listMode.lp-center #dock{left:50%;margin-left:-12rem}
+body.listMode.lp-right #dock{left:auto;right:4rem}
 .listMode #track{white-space:normal;padding:.6rem}
 .listMode .tile{display:flex;width:100%;height:3.5rem;align-items:center;text-align:left;margin:.25rem 0;gap:1rem;padding:.3rem .8rem;border-radius:.7rem}
 .listMode .tile.f{background:rgba(255,255,255,.2);transform:none}
-.listMode .ic{width:2.5rem;height:2.5rem;line-height:2.5rem;margin:0;font-size:1.2rem;flex-shrink:0}
+.listMode .ic{width:2.5rem;height:2.5rem;line-height:2.5rem;margin:0;font-size:1.2rem;flex-shrink:0;text-align:center}   /* letter tiles (All apps, Settings) sit in the middle of the icon spot */
+.listMode .nm{min-width:0}
 .listMode .nm{font-size:1rem}
 body.light.listMode .tile.f{background:rgba(0,0,0,.1)}
 /* dock position (Dock and TV banner layouts; List keeps its own fixed spot). A top dock moves the clock to the bottom corner. */
+body.fit:not(.listMode) #track{text-align:center}
+body.fit:not(.listMode) #track .tile:last-child{margin-right:0}   /* the trailing gap would push the row off centre */   /* everything fits, so centre it; with more apps it scrolls as before */
 body.dp-top:not(.listMode) #dock{bottom:auto;top:3rem}
 body.dp-top:not(.listMode) #clock{top:auto;bottom:3rem}
 body.dp-center:not(.listMode) #dock{bottom:auto;top:30%}   /* script centres it exactly (and keeps it clear of the clock) */
@@ -148,7 +153,7 @@ function safe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 /* ---------- browser preview stand-in for the Android bridge ---------- */
 if(mock){var MK=[['com.netflix.ninja','Netflix'],['com.amazon.firetv.youtube','YouTube'],['com.verizon.fios.tvce','Fios TV'],['org.jellyfin.androidtv','Jellyfin'],['org.xbmc.kodi','Kodi'],['org.videolan.vlc','VLC'],['com.plexapp.android','Plex'],['com.tubitv','Tubi'],['com.esaba.downloader','Downloader'],['com.amazon.firebat','Prime Video'],['com.disney.disneyplus','Disney+'],['com.amazon.cloud9','Web Browser'],['com.amazon.bueller.photos','Photos'],['com.amazon.music.tv','Music'],['com.amazon.venezia','Appstore'],['com.amazon.tv.settings.v2','Settings'],['com.amazon.imdb.tv.android.app','Free Movies']];
  for(var q=18;q<=46;q++)MK.push(['mock.app'+q,'Sample app '+q]);
- L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},launch:function(p){console.log('launch',p);if(p==='mock.app46')setTimeout(function(){window.onLaunchFail&&window.onLaunchFail(p)},50)},appInfo:function(){return 'none'},uninstall:function(p){return p.indexOf('com.amazon.')===0?'system':'none'},info:function(){return JSON.stringify({ver:'0.0-preview',code:0,sdk:28,rel:'9',model:'Browser preview',webview:'Chrome (preview)',service:false,takeover:true,free:3.2e9,total:8e9})},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},backupExists:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('check',!!j,'')},100)},checkUpdate:function(){window.__updCalls=(window.__updCalls||0)+1;setTimeout(function(){window.onUpdate(window.__mockUpdate||JSON.stringify({ok:true,tag:'v0.0.0',url:'https://github.com/Mark-Stephen-Rose/FrameLauncher/releases/latest'}))},200)},homeState:function(){return JSON.stringify({service:false,takeover:true})},setTakeover:function(){},openStockHome:function(){return false},openAccessibility:function(){},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
+ L={apps:function(){var a=[];for(var i=0;i<MK.length;i++)a.push({p:MK[i][0],n:MK[i][1]});return JSON.stringify(a)},icon:function(){return ''},getAutoApp:function(){try{return localStorage.getItem('mockAutoApp')||''}catch(e){return ''}},setAutoApp:function(p){try{localStorage.setItem('mockAutoApp',p||'')}catch(e){}console.log('auto app',p||'off')},getAutoSecs:function(){try{return +localStorage.getItem('mockAutoSecs')||10}catch(e){return 10}},setAutoSecs:function(s){try{localStorage.setItem('mockAutoSecs',''+s)}catch(e){}},runAutoApp:function(){console.log('run auto app');return true},network:function(){console.log('network settings')},launch:function(p){console.log('launch',p);if(p==='mock.app46')setTimeout(function(){window.onLaunchFail&&window.onLaunchFail(p)},50)},appInfo:function(){return 'none'},uninstall:function(p){return p.indexOf('com.amazon.')===0?'system':'none'},info:function(){return JSON.stringify({ver:'0.0-preview',code:0,sdk:28,rel:'9',model:'Browser preview',webview:'Chrome (preview)',service:false,takeover:true,free:3.2e9,total:8e9})},settings:function(){console.log('system settings')},vpn:function(){return JSON.stringify({on:location.hash.indexOf('vpn')>=0,id:'7'})},version:function(){return '0.0-preview'},exportSettings:function(j){try{localStorage.setItem('mockBackup',j)}catch(e){}setTimeout(function(){window.onBackup('export',true,'Downloads/FrameLauncher-settings.json')},100)},importSettings:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('import',!!j,j||'No backup file found in Downloads')},100)},backupExists:function(){var j=null;try{j=localStorage.getItem('mockBackup')}catch(e){}setTimeout(function(){window.onBackup('check',!!j,'')},100)},checkUpdate:function(){window.__updCalls=(window.__updCalls||0)+1;setTimeout(function(){window.onUpdate(window.__mockUpdate||JSON.stringify({ok:true,tag:'v0.0.0',url:'https://github.com/Mark-Stephen-Rose/FrameLauncher/releases/latest'}))},200)},homeState:function(){return JSON.stringify({service:false,takeover:true})},setTakeover:function(){},openStockHome:function(){return false},openAccessibility:function(){},geo:function(){setTimeout(function(){window.onGeo(JSON.stringify({ok:true,country:'Netherlands',cc:'NL',city:'Amsterdam'}))},400)}}}
 
 var PREF=['com.netflix.ninja','com.amazon.firetv.youtube','com.verizon.fios.tvce'];
 /* Stock apps (the maker's own package ids) that are never hidden automatically: still useful, or needed to reach system screens */
@@ -163,7 +168,7 @@ function wallThumb(i){return 'wallpaper/'+wallpapers[i][1]+'-thumb.jpg'}
 /* ---------- state ---------- */
 var apps=[],vapps=[],icons={},banners={},pins=[],hidden=[],lastJson=null;
 var screen='home',di=0,ai=0,sr=0,sc=0,mi=0,hi=0,grab=false,ctx=null,rowCol=[];
-var settings={wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true,vpn:'off',recent:true,shuffle:'off',updates:false};
+var settings={listPos:'left',wall:0,theme:'dark',layout:'dock',display:'both',glass:true,font:100,focus:110,clock24:false,showClock:true,showDate:true,dock:'bottom',artIdle:0,artShow:0,artClock:true,vpn:'off',recent:true,shuffle:'off',updates:false};
 var recent=[],ms=0,recentDirty=false,lastLaunch=null,hn=[],gn=[],mn=[],hln=[],mlist=[],hlist=[],offs={},homeDirty=false;
 var freshInstall=false,restoring=false,upd={t:0,tag:'',busy:false,manual:false};
 
@@ -176,7 +181,7 @@ function load(){
  try{var u=JSON.parse(localStorage.getItem('frameUpdate')||'null');if(u&&typeof u==='object'){upd.t=+u.t||0;upd.tag=typeof u.tag==='string'?u.tag:''}}catch(e){}
  fixSettings()}
 /* Pull every setting back to a legal value (used after loading and after importing a backup file). */
-function fixSettings(){var k,d={theme:['dark','light'],layout:['dock','list','banner'],display:['both','icons','names'],dock:['bottom','center','top'],vpn:['off','country','city'],shuffle:['off','daily','wake']};
+function fixSettings(){var k,d={theme:['dark','light'],layout:['dock','list','banner'],display:['both','icons','names'],dock:['bottom','center','top'],listPos:['left','center','right'],vpn:['off','country','city'],shuffle:['off','daily','wake']};
  for(k in d)if(d[k].indexOf(settings[k])<0)settings[k]=d[k][0];
  if(typeof settings.wall!=='number'||settings.wall<0||settings.wall>=wallpapers.length)settings.wall=0;
  if([0,2,5,10].indexOf(settings.artIdle)<0)settings.artIdle=0;if([0,30,120].indexOf(settings.artShow)<0)settings.artShow=0;
@@ -211,8 +216,8 @@ function reveal(key,vp,tr,el,horiz,center,atStart){
 /* ---------- appearance ---------- */
 function applyLook(){var w=wallpapers[settings.wall]||wallpapers[0],c=[],k=CAT[w[1]]||null;
  $('bg').style.backgroundColor='#101315';$('bg').style.backgroundImage="url('"+wallSrc(settings.wall)+"')";
- if(settings.theme==='light')c.push('light');if(settings.layout==='list')c.push('listMode');if(settings.layout==='banner')c.push('bannerMode');
- if(settings.display==='icons')c.push('noicons');if(settings.display==='names')c.push('nonames');if(settings.glass)c.push('glass');c.push('scr-'+screen);
+ if(settings.theme==='light')c.push('light');if(settings.layout==='list'){c.push('listMode');c.push('lp-'+settings.listPos)}if(settings.layout==='banner')c.push('bannerMode');
+ if(settings.display==='icons')c.push('nonames');if(settings.display==='names')c.push('noicons');if(settings.glass)c.push('glass');c.push('scr-'+screen);
  if(!settings.showClock)c.push('noclock');if(!settings.showDate)c.push('nodate');if(settings.dock!=='bottom')c.push('dp-'+settings.dock);if(settings.vpn!=='off')c.push('vpnon');
  var clkLow=settings.dock==='top'&&settings.layout!=='list';   // a top dock moves the clock to the bottom corner, so judge it by the photo down there (same area the labels use)
  if(k){if((clkLow?k.label:k.clock)==='dark')c.push('clk-dark');c.push(k.label==='dark'?'lbl-dark':'lbl-light')}
@@ -271,8 +276,14 @@ function watch(key,nodes){var i;if(ios[key]){ios[key].disconnect();ios[key]=null
  if(!('IntersectionObserver' in window)){for(i=0;i<nodes.length;i++)want(nodes[i].getAttribute('data-p'));return}
  ios[key]=new IntersectionObserver(function(es){for(var j=0;j<es.length;j++)if(es[j].isIntersecting){want(es[j].target.getAttribute('data-p'));ios[key].unobserve(es[j].target)}},{rootMargin:'300px'});
  for(i=0;i<nodes.length;i++)ios[key].observe(nodes[i])}
+/* Centre the dock when every tile fits without scrolling. Measured with the tiles left-aligned, then the class is set. */
+function fitDock(){var d=$('dock'),t=$('track'),b=document.body,n=hn.length,last,w=0,fits=false;
+ b.classList.remove('fit');
+ if(settings.layout!=='list'&&n){last=hn[n-1];var cs=getComputedStyle(last),ts=getComputedStyle(t);
+  w=last.offsetLeft+last.offsetWidth+(parseFloat(cs.marginRight)||0)+(parseFloat(ts.paddingRight)||0);fits=w<=d.clientWidth+1}
+ if(fits){b.classList.add('fit');offs.home=0;t.style.transform='translate3d(0,0,0)'}}
 function buildHome(){var it=dockItems(),h='';for(var i=0;i<it.length;i++)h+=tileHtml(it[i],pins.indexOf(it[i].p)>=0);
- $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));focusHome();watch('home',hn);applyFrost()}   // dock height depends on its tiles, so repaint the glass now
+ $('track').innerHTML=h;hn=$('track').childNodes;di=Math.max(0,Math.min(di,hn.length-1));fitDock();focusHome();watch('home',hn);applyFrost()}   // dock height depends on its tiles, so repaint the glass now
 function focusHome(){for(var i=0;i<hn.length;i++)hn[i].className='tile'+(i===di?' f':'');
  reveal('home',$('dock'),$('track'),hn[di],settings.layout!=='list',settings.layout!=='list')}
 /* Recently used apps (launched from Frame Launcher), newest first, only ones still installed and visible. */
@@ -302,6 +313,10 @@ function gridMove(dir){if(!gn.length)return ai;var cur=gn[ai],cy=cur.offsetTop,c
  return best}
 
 /* ---------- settings screen: rows (up/down) of options (left/right) ---------- */
+/* Auto-open app (a VPN app, say): the Android side opens it at start-up and each time the stick wakes, then returns here. */
+function autoPkg(){try{return (L.getAutoApp&&L.getAutoApp())||''}catch(e){return ''}}
+function autoSecs(){try{return (L.getAutoSecs&&L.getAutoSecs())||10}catch(e){return 10}}
+function autoTitle(){var p=autoPkg(),a=p&&byPkg(p);return 'AUTO-OPEN APP · '+(!p?'off':a?a.n+' opens at start-up and when the stick wakes':'the chosen app is not installed')}
 function opt(l,a,s){return {l:l,a:a,s:s}}
 function defs(){return [
  {t:'BACKGROUND',w:1},
@@ -309,17 +324,20 @@ function defs(){return [
  {t:'THEME',o:[opt('Dark','theme:dark',function(){return settings.theme==='dark'}),opt('Light','theme:light',function(){return settings.theme==='light'})]},
  {t:'LAYOUT',o:[opt('Dock','layout:dock',function(){return settings.layout==='dock'}),opt('List','layout:list',function(){return settings.layout==='list'}),opt('TV banners','layout:banner',function(){return settings.layout==='banner'})]},
  {t:function(){return 'DOCK POSITION'+(settings.layout==='list'?' · not used by the List layout':'')},o:[opt('Bottom','dock:bottom',function(){return settings.dock==='bottom'}),opt('Center','dock:center',function(){return settings.dock==='center'}),opt('Top','dock:top',function(){return settings.dock==='top'})]},
+ {t:function(){return 'LIST POSITION'+(settings.layout==='list'?'':' · only used by the List layout')},o:[opt('Left','listpos:left',function(){return settings.listPos==='left'}),opt('Center','listpos:center',function(){return settings.listPos==='center'}),opt('Right','listpos:right',function(){return settings.listPos==='right'})]},
  {t:'APP LABELS',o:[opt('Icons + names','display:both',function(){return settings.display==='both'}),opt('Icons only','display:icons',function(){return settings.display==='icons'}),opt('Names only','display:names',function(){return settings.display==='names'})]},
  {t:'CLOCK',o:[opt('12-hour','clock:12',function(){return !settings.clock24}),opt('24-hour','clock:24',function(){return settings.clock24}),opt(function(){return 'Clock '+(settings.showClock?'On':'Off')},'showclock',function(){return settings.showClock}),opt(function(){return 'Date '+(settings.showDate?'On':'Off')},'showdate',function(){return settings.showDate})]},
  {t:function(){return 'ART MODE · '+(settings.artIdle?'starts after '+settings.artIdle+' min idle':'off')},o:[opt('Off','artidle:0',function(){return !settings.artIdle}),opt('2 min','artidle:2',function(){return settings.artIdle===2}),opt('5 min','artidle:5',function(){return settings.artIdle===5}),opt('10 min','artidle:10',function(){return settings.artIdle===10}),opt('Start now','artnow')]},
  {t:'ART STYLE',o:[opt('Still photo','artshow:0',function(){return !settings.artShow}),opt('Slideshow 30 s','artshow:30',function(){return settings.artShow===30}),opt('Slideshow 2 min','artshow:120',function(){return settings.artShow===120}),opt(function(){return 'Clock '+(settings.artClock?'On':'Off')},'artclock',function(){return settings.artClock})]},
  {t:function(){return 'VPN STATUS · '+(settings.vpn==='off'?'off':'checks every few seconds; location looked up online via ipwho.is')},o:[opt('Off','vpn:off',function(){return settings.vpn==='off'}),opt('Country','vpn:country',function(){return settings.vpn==='country'}),opt('Country + city','vpn:city',function(){return settings.vpn==='city'}),opt('Check now','vpnrefresh')]},
+ {t:autoTitle,o:[opt('Off','autooff',function(){return !autoPkg()}),opt('Choose an app','autochoose'),opt('Test now','autotest')]},
+ {t:function(){return 'RETURN TO FRAME LAUNCHER · '+autoSecs()+' seconds after that app opens'},o:[opt('5 s','autosecs:5',function(){return autoSecs()===5}),opt('10 s','autosecs:10',function(){return autoSecs()===10}),opt('20 s','autosecs:20',function(){return autoSecs()===20})]},
  {t:function(){return 'APPEARANCE · font '+settings.font+'% · focus '+settings.focus+'%'},o:[opt(function(){return 'Glass '+(settings.glass?'On':'Off')},'glass',function(){return settings.glass}),opt('Font −','font:-10'),opt('Font +','font:+10'),opt('Focus −','focus:-10'),opt('Focus +','focus:+10')]},
  {t:function(){return 'RECENT APPS · '+(settings.recent?'the apps you opened lately, shown first in All apps':'off')},o:[opt('On','recent:on',function(){return settings.recent}),opt('Off','recent:off',function(){return !settings.recent}),opt('Clear recent list','recentclear')]},
  {t:'HOME APPS',o:[opt('Reorder / manage pinned apps','manage'),opt(function(){return 'Hidden apps ('+hiddenInstalled().length+')'},'hiddenscr')]},
  {t:function(){return 'BACKUP · version '+appVer+' · file: Downloads/FrameLauncher-settings.json'},o:[opt('Export settings','export'),opt('Import settings','import')]},
  {t:function(){var h=homeInfo();return 'HOME BUTTON · '+(!h?'not available here':!h.service?'accessibility service is OFF, so Home still goes to the stock home screen':h.takeover?'Home and start-up open Frame Launcher; Open stock home lets you roam the stock screens freely':'takeover paused')},o:[opt(function(){var h=homeInfo();return 'Takeover '+(h&&h.takeover?'On':'Off')},'hometake',function(){var h=homeInfo();return h&&h.takeover}),opt('Open stock home','homestock'),opt('Accessibility settings','a11y')]},
- {t:'STOCK APPS & SYSTEM',o:[opt('Hide stock apps','stock'),opt('System settings','system')]},
+ {t:'STOCK APPS & SYSTEM',o:[opt('Hide stock apps','stock'),opt('System settings','system'),opt('Network settings','network')]},
  {t:function(){return 'UPDATES · '+updText()},o:[opt('Off','updates:off',function(){return !settings.updates}),opt('Check daily','updates:on',function(){return settings.updates}),opt('Check now','updatecheck')]},
  {t:'ABOUT & STORAGE',info:1,o:[opt('Refresh details','about')]},
  {t:'',o:[opt('Close settings','close')]}]}
@@ -388,7 +406,7 @@ function hidKey(k){if(k===38)hi=Math.max(0,hi-1);else if(k===40)hi=Math.min(hlis
 
 /* ---------- Menu-key popup in All apps ---------- */
 function openCtx(){var a=gnApp(ai);if(!a)return;var pinned=pins.indexOf(a.p)>=0;
- ctx={sel:0,p:a.p,n:a.n,o:[['pin',pinned?'Unpin from Home':'Pin to Home'],['hide','Hide this app'],['info','App info'],['uninstall','Uninstall'],['cancel','Cancel']]};
+ ctx={sel:0,p:a.p,n:a.n,o:[['pin',pinned?'Unpin from Home':'Pin to Home'],['hide','Hide this app'],['auto',autoPkg()===a.p?'Stop opening at start-up':'Open at start-up & wake'],['info','App info'],['uninstall','Uninstall'],['cancel','Cancel']]};
  showCtx(a.n,'')}
 function showCtx(title,note){$('ctitle').textContent=title;var h='';for(var i=0;i<ctx.o.length;i++)h+='<div class="co">'+ctx.o[i][1]+'</div>';
  $('copts').innerHTML=h;$('cnote').textContent=note;$('cnote').style.display=note?'block':'none';$('ctx').style.display='block';ctxFocus();hints()}
@@ -400,6 +418,7 @@ function ctxKey(k){
   if(kind==='restore'){if(a==='restore'){restoring=true;try{L.importSettings()}catch(e){restoring=false;toast('Restore is not available here')}}return true}
   if(a==='pin'){var x=pins.indexOf(p);if(x>=0)pins.splice(x,1);else pins.push(p);save();buildHome();buildGrid();toast(x>=0?'Removed from Home':'Added to Home')}
   else if(a==='hide'){var y=pins.indexOf(p);if(y>=0)pins.splice(y,1);if(!isHidden(p))hidden.push(p);save();recompute();buildHome();buildGrid();refreshSettings();toast(n+' hidden · restore in Settings > Hidden apps')}
+  else if(a==='auto'){var was=autoPkg()===p;try{L.setAutoApp(was?'':p)}catch(e){}refreshSettings();toast(was?'No app will open automatically':n+' will open at start-up and when the stick wakes')}
   else if(a==='info'){var r='none';try{r=L.appInfo?L.appInfo(p):'none'}catch(e){}if(r!=='ok')toast('App info isn\u2019t available on this device')}
   else if(a==='uninstall'){var u='none';try{u=L.uninstall?L.uninstall(p):'none'}catch(e){}
    if(u==='system')toast(n+' is part of the system and can\u2019t be uninstalled');else if(u!=='ok')toast('Uninstall isn\u2019t available here. Try the system Settings > Applications')}
@@ -483,6 +502,10 @@ function loadAbout(){var o=null,t;try{o=JSON.parse(L.info())}catch(e){}
  aboutTxt=t;if(selEls.length)refreshSettings()}
 function homeInfo(){try{return JSON.parse(L.homeState())}catch(e){return null}}
 function onAction(a){
+ if(a==='autooff'){try{L.setAutoApp('')}catch(e){}refreshSettings();toast('No app will open automatically');return}
+ if(a==='autochoose'){go('all');toast('Press Menu on the app, then choose Open at start-up & wake');return}
+ if(a==='autotest'){var ap=autoPkg(),ok=false;if(!ap){toast('Choose an app first');return}try{ok=L.runAutoApp()}catch(e){}if(!ok)toast('Couldn\u2019t open that app');return}
+ if(a.indexOf('autosecs:')===0){try{L.setAutoSecs(+a.split(':')[1])}catch(e){}refreshSettings();return}
  if(a==='about'){loadAbout();toast('Details refreshed');return}
  if(a==='recentclear'){recent=[];try{localStorage.removeItem('frameRecent')}catch(e){}buildGrid();toast('Recent list cleared');return}
  if(a.indexOf('recent:')===0){settings.recent=a.split(':')[1]==='on';save();buildGrid();refreshSettings();return}
@@ -507,6 +530,7 @@ function onAction(a){
  else if(a==='artclock'){settings.artClock=!settings.artClock}
  else if(a==='artnow'){startArt();return}
  else if(a.indexOf('dock:')===0){settings.dock=a.split(':')[1]}
+ else if(a.indexOf('listpos:')===0){settings.listPos=a.split(':')[1]}
  else if(a.indexOf('clock:')===0){settings.clock24=a.split(':')[1]==='24'}
  else if(a==='showclock'){settings.showClock=!settings.showClock}
  else if(a==='showdate'){settings.showDate=!settings.showDate}
@@ -516,7 +540,8 @@ function onAction(a){
  else if(a==='manage'){grab=false;mi=0;go('manage');return}
  else if(a==='hiddenscr'){hi=0;go('hidden');return}
  else if(a==='stock'){hideStock(false);return}
- else if(a==='system'){try{L.settings()}catch(e){}return}
+ else if(a==='system'){try{L.settings()}catch(e){}toast('Opening the Fire TV settings \u00b7 press Back to return here');return}
+ else if(a==='network'){try{L.network()}catch(e){}toast('Opening network settings \u00b7 press Back to return here');return}
  else if(a==='close'){go('home');return}
  save();applyLook();tick();rebuildAll()}
 function rebuildAll(){recompute();buildHome();buildGrid();refreshSettings();if(screen==='manage')buildManage();if(screen==='hidden')buildHidden()}
@@ -635,6 +660,6 @@ load();tick();setInterval(tick,20000);buildSettings();refreshApps();pollVpn();
 /* start-up: On wake also counts a fresh start (boot, or the system closed the launcher while the TV slept) */
 if(settings.shuffle==='wake')shuffleNow(true);else shuffleDaily();
 maybeUpdate();restoreCheck();
-window.onresize=function(){focusHome();applyFrost()};
+window.onresize=function(){fitDock();focusHome();applyFrost()};
 })();
 </script></body></html>

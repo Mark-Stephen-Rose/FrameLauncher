@@ -7,6 +7,7 @@ readable on every wallpaper.
 ## Features
 
 - **Layouts:** Dock, List or TV banner, in light or dark theme, with adjustable font size, focus size and label visibility.
+  The List is about a third of the screen wide and sits left, center or right; a short Dock or TV banner row is centered.
 - **Wallpapers:** 14 bundled photographs with frosted-glass panels and per-photo readability tuning. Shuffle them daily,
   on wake, or on demand.
 - **Clock and dock:** 12 or 24-hour clock, clock and date on or off, dock at the bottom, center or top.
@@ -14,6 +15,8 @@ readable on every wallpaper.
   still or a slideshow.
 - **Apps:** a Recent row, pin and reorder, hide apps, App info and Uninstall from the Menu popup, and a one-step
   "Hide stock apps" for the device maker's own apps.
+- **Auto-open app:** open one app (a VPN app, say) when the stick starts and every time it wakes, then return to Frame
+  Launcher after 5, 10 or 20 seconds. Pick it with Menu on any app in All apps, or from Settings.
 - **Home button:** an optional accessibility service brings Frame Launcher back when the stock home screen appears
   (Home button, wake from sleep, leaving an app). Settings has an "Open stock home" escape hatch.
 - **VPN status pill (optional):** shows whether a VPN is connected and where it exits.
@@ -88,6 +91,20 @@ under the [Unsplash License](https://unsplash.com/license).
 ---
 
 ## Version history
+
+### 0.10
+
+- **App labels fixed:** "Icons only" now hides the names and "Names only" hides the icons (they were swapped).
+- **List layout:** the letter tiles for All apps and Settings are centered in the icon spot. The list is now a fixed
+  width of about a third of the screen so more of the photo shows, with a new Settings > List position (Left, Center,
+  Right).
+- **Centered rows:** the Dock and TV banners are centered when every app fits; with more apps they scroll as before.
+- **Auto-open app:** opens a chosen app (for example your VPN app) at start-up and on every wake, then brings Frame
+  Launcher back after a few seconds, but only if you are still on that app. Needs the Home button service for wake.
+- **System settings fixed:** the Fire TV settings screens are drawn by the stock launcher, which Home takeover used to
+  send straight back to Frame Launcher. They now stay open, Back returns here, and there is a new Network settings
+  button next to System settings.
+- Tests: 62 browser tests, including the new behavior.
 
 ### Since 0.4 (current builds default to 0.8.0)
 
