@@ -36,14 +36,15 @@ async function open(opts = {}) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); else logs.push(m.text()); });
   if (opts.seed || opts.mockUpdate !== undefined) {
-    await page.addInitScript(({ seed, mockUpdate }) => {
+    await page.addInitScript(({ seed, mockUpdate, pins }) => {
       if (mockUpdate !== undefined) window.__mockUpdate = mockUpdate;
       if (seed && !sessionStorage.getItem('__seeded')) {
         sessionStorage.setItem('__seeded', '1');
+        if (pins) localStorage.setItem('pins', JSON.stringify(pins));
         localStorage.setItem('frameSettings', JSON.stringify(seed));
         localStorage.setItem('frameDefaultsVersion', '2');
       }
-    }, { seed: opts.seed || null, mockUpdate: opts.mockUpdate });
+    }, { seed: opts.seed || null, mockUpdate: opts.mockUpdate, pins: opts.pins || null });
   }
   await page.goto(PAGE_URL);
   await page.waitForSelector('#track .tile');
@@ -69,6 +70,11 @@ const saved = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('fra
 const store = (page, key) => page.evaluate((k) => localStorage.getItem(k), key);
 const ctxShown = (page) => page.evaluate(() => getComputedStyle(document.getElementById('ctx')).display !== 'none');
 const bgOf = (page) => page.evaluate(() => document.getElementById('bg').style.backgroundImage);
+/* Console messages reach the test a moment after the page prints them, so wait for one instead of checking at once. */
+async function sawLog(logs, text) {
+  for (let i = 0; i < 40 && !logs.includes(text); i++) await new Promise((r) => setTimeout(r, 50));
+  assert.ok(logs.includes(text), 'the page never logged: ' + text);
+}
 const dayKey = (page) => page.evaluate(() => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); });
 
 /* Move along the dock (left/right, or up/down in the List layout) to the tile for pkg, from wherever focus is now. */
@@ -192,7 +198,7 @@ test('arrows move along the dock and OK launches the focused app', T, async () =
     await press(page, 'ArrowLeft');
     assert.equal(await homeFocus(page), first);
     await press(page, 'Enter');
-    assert.ok(logs.includes('launch ' + first), 'launch was not requested for ' + first);
+    await sawLog(logs, 'launch ' + first);
   });
 });
 
@@ -301,7 +307,7 @@ test('Menu popup lists pin, hide, app info, uninstall and cancel; Back closes it
     await press(page, 'm');
     assert.ok(await ctxShown(page));
     const o = await ctxOptions(page);
-    assert.deepEqual(o.slice(1), ['Hide this app', 'App info', 'Uninstall', 'Cancel']);
+    assert.deepEqual(o.slice(1), ['Hide this app', 'Open at start-up & wake', 'App info', 'Uninstall', 'Cancel']);
     assert.match(o[0], /Pin to Home|Unpin from Home/);
     await press(page, 'Escape');
     assert.equal(await ctxShown(page), false);
@@ -311,15 +317,15 @@ test('Menu popup lists pin, hide, app info, uninstall and cancel; Back closes it
 test('Menu popup: App info and Uninstall explain themselves when unavailable', T, async () => {
   await withPage({}, async ({ page }) => {
     await openAll(page);
-    await press(page, 'm'); await press(page, 'ArrowDown', 2); await press(page, 'Enter');
+    await press(page, 'm'); await press(page, 'ArrowDown', 3); await press(page, 'Enter');
     assert.match(await toastOf(page), /App info isn.t available/);
     // the first app in the list is the Appstore, which is part of the system
-    await press(page, 'm'); await press(page, 'ArrowDown', 3); await press(page, 'Enter');
+    await press(page, 'm'); await press(page, 'ArrowDown', 4); await press(page, 'Enter');
     assert.match(await toastOf(page), /part of the system and can.t be uninstalled/);
     // a non-stock app: the stand-in has no uninstaller
     await page.evaluate(() => { for (const t of document.querySelectorAll('#grid .tile')) if (t.getAttribute('data-p') === 'org.xbmc.kodi') t.scrollIntoView(); });
     for (let i = 0; i < 80 && (await page.evaluate(() => document.querySelector('#grid .tile.f').getAttribute('data-p'))) !== 'org.xbmc.kodi'; i++) await press(page, 'ArrowRight');
-    await press(page, 'm'); await press(page, 'ArrowDown', 3); await press(page, 'Enter');
+    await press(page, 'm'); await press(page, 'ArrowDown', 4); await press(page, 'Enter');
     assert.match(await toastOf(page), /Uninstall isn.t available here/);
   });
 });
@@ -354,7 +360,7 @@ test('Menu popup: Hide removes the app and Settings can restore it; Pin adds it 
 test('Settings: every row and every option can be reached and pressed without errors', T, async () => {
   await withPage({}, async ({ page }) => {
     await openSettings(page);
-    const skip = new Set(['manage', 'hiddenscr', 'close', 'artnow']);   // these leave Settings or start art mode; covered below
+    const skip = new Set(['manage', 'hiddenscr', 'close', 'artnow', 'autochoose']);   // these leave Settings or start art mode; covered below
     const info = await rowsInfo(page);
     assert.ok(info.length >= 16, 'expected the full settings list');
     let pressed = 0;
@@ -673,3 +679,139 @@ for (const seed of [1, 2, 3]) {
     });
   });
 }
+
+
+/* ---------- v10: labels, list, centred dock, auto-open app, system settings ---------- */
+
+const tileDisplay = (page) => page.evaluate(() => {
+  const t = document.querySelector('#track .tile');
+  return { ic: getComputedStyle(t.querySelector('.ic')).display, nm: getComputedStyle(t.querySelector('.nm')).display };
+});
+
+test('App labels: Icons only hides the names, Names only hides the icons', T, async () => {
+  await withPage({}, async ({ page }) => {
+    await openSettings(page);
+    await pick(page, 'APP LABELS', 'Icons only');
+    let d = await tileDisplay(page);
+    assert.notEqual(d.ic, 'none', 'Icons only should show the icons'); assert.equal(d.nm, 'none', 'Icons only should hide the names');
+    await pick(page, 'APP LABELS', 'Names only');
+    d = await tileDisplay(page);
+    assert.equal(d.ic, 'none', 'Names only should hide the icons'); assert.notEqual(d.nm, 'none', 'Names only should show the names');
+    await pick(page, 'APP LABELS', 'Icons + names');
+    d = await tileDisplay(page);
+    assert.notEqual(d.ic, 'none'); assert.notEqual(d.nm, 'none');
+  });
+});
+
+for (const pos of ['left', 'center', 'right']) {
+  test(`List layout, position ${pos}: about a third wide, letters centred in the icon spot`, T, async () => {
+    await withPage({ seed: { layout: 'list', listPos: pos } }, async ({ page }) => {
+      const g = await page.evaluate(() => {
+        const d = document.getElementById('dock').getBoundingClientRect();
+        const tile = [...document.querySelectorAll('#track .tile')].find((t) => t.getAttribute('data-p') === '__all');
+        const ic = tile.querySelector('.ic'), ib = ic.getBoundingClientRect();
+        const rg = document.createRange(); rg.selectNodeContents(ic); const gb = rg.getBoundingClientRect();
+        return { l: d.left, r: d.right, w: d.width, vw: innerWidth, letterOffset: Math.abs((gb.left + gb.right) / 2 - (ib.left + ib.right) / 2) };
+      });
+      assert.ok(g.w >= g.vw * 0.25 && g.w <= g.vw * 0.45, `list is ${Math.round(g.w / g.vw * 100)}% of the screen`);
+      assert.ok(g.letterOffset < 2, `the A is ${g.letterOffset}px off centre in its icon spot`);
+      if (pos === 'left') assert.ok(g.l < g.vw * 0.1, 'list should hug the left');
+      if (pos === 'center') assert.ok(Math.abs((g.l + g.r) / 2 - g.vw / 2) < 2, 'list should be centred');
+      if (pos === 'right') assert.ok(g.r > g.vw * 0.9, 'list should hug the right');
+    });
+  });
+}
+
+test('Settings > List position changes where the list sits', T, async () => {
+  await withPage({ seed: { layout: 'list' } }, async ({ page }) => {
+    await openSettings(page);
+    await pick(page, 'LIST POSITION', 'Right');
+    assert.equal((await saved(page)).listPos, 'right');
+    assert.match(await page.evaluate(() => document.body.className), /lp-right/);
+    await pick(page, 'LIST POSITION', 'Center');
+    assert.match(await page.evaluate(() => document.body.className), /lp-center/);
+  });
+});
+
+/* Layout positions (offsets), so the focus zoom does not skew the gaps; scrolled = where the first tile really is on screen. */
+const dockGaps = (page) => page.evaluate(() => {
+  const tr = document.getElementById('track'), t = [...tr.querySelectorAll('.tile')], last = t[t.length - 1];
+  return { fit: document.body.classList.contains('fit'), left: t[0].offsetLeft, right: tr.clientWidth - (last.offsetLeft + last.offsetWidth),
+    tiles: t.length, scrolled: t[0].getBoundingClientRect().left };
+});
+
+test('Dock: centred when every app fits, and stays put while you move along it', T, async () => {
+  await withPage({ seed: { layout: 'dock' }, pins: ['com.netflix.ninja', 'org.videolan.vlc'] }, async ({ page }) => {
+    let g = await dockGaps(page);
+    assert.ok(g.fit, 'a short dock should be centred');
+    assert.ok(Math.abs(g.left - g.right) < 4, `gaps differ: left ${g.left}, right ${g.right}`);
+    await press(page, 'ArrowRight', 2);
+    const h = await dockGaps(page);
+    assert.ok(Math.abs(h.scrolled - g.scrolled) < 1, 'a centred dock must not scroll');
+  });
+});
+
+test('TV banners: centred when they fit', T, async () => {
+  await withPage({ seed: { layout: 'banner' }, pins: ['com.netflix.ninja'] }, async ({ page }) => {
+    const g = await dockGaps(page);
+    assert.ok(g.fit, `${g.tiles} banners should fit and be centred`);
+    assert.ok(Math.abs(g.left - g.right) < 4, `gaps differ: left ${g.left}, right ${g.right}`);
+  });
+});
+
+test('Dock: with too many apps it is not centred and scrolls from the left as before', T, async () => {
+  const many = ['com.netflix.ninja', 'org.xbmc.kodi', 'com.plexapp.android', 'com.tubitv', 'org.videolan.vlc', 'com.disney.disneyplus',
+    'mock.app18', 'mock.app19', 'mock.app20', 'mock.app21', 'mock.app22', 'mock.app23', 'mock.app24', 'mock.app25'];
+  await withPage({ seed: { layout: 'dock' }, pins: many }, async ({ page }) => {
+    const g = await dockGaps(page);
+    assert.ok(g.tiles >= 12, 'test needs a long dock, only ' + g.tiles + ' tiles');
+    assert.equal(g.fit, false, 'an overflowing dock must not be centred');
+    const before = g.scrolled;
+    await press(page, 'ArrowRight', g.tiles - 1);
+    await page.waitForTimeout(450);   // the dock slides for a quarter of a second
+    const h = await dockGaps(page);
+    assert.ok(h.scrolled < before - 50, 'moving along a long dock should scroll it');
+  });
+});
+
+test('Auto-open app: pick from the Menu, shown in Settings, Test now, return time, Off', T, async () => {
+  await withPage({}, async ({ page, logs }) => {
+    await openAll(page);
+    await press(page, 'm');
+    const o = await ctxOptions(page);
+    assert.equal(o[2], 'Open at start-up & wake');
+    await press(page, 'ArrowDown', 2); await press(page, 'Enter');
+    assert.match(await toastOf(page), /will open at start-up and when the stick wakes/);
+    const app = await page.evaluate(() => localStorage.getItem('mockAutoApp'));
+    assert.ok(app, 'no app was remembered');
+    await press(page, 'Escape');                       // back to Home
+    await openSettings(page);
+    assert.match(await rowTitle(page, 'AUTO-OPEN APP'), /opens at start-up and when the stick wakes/);
+    await pick(page, 'AUTO-OPEN APP', 'Test now');
+    await sawLog(logs, 'run auto app');
+    await pick(page, 'RETURN TO FRAME LAUNCHER', '20 s');
+    assert.equal(await page.evaluate(() => localStorage.getItem('mockAutoSecs')), '20');
+    assert.match(await rowTitle(page, 'RETURN TO FRAME LAUNCHER'), /20 seconds/);
+    await pick(page, 'AUTO-OPEN APP', 'Off');
+    assert.equal(await page.evaluate(() => localStorage.getItem('mockAutoApp')), '');
+    assert.match(await rowTitle(page, 'AUTO-OPEN APP'), /off/);
+    await pick(page, 'AUTO-OPEN APP', 'Test now');
+    assert.match(await toastOf(page), /Choose an app first/);
+    await pick(page, 'AUTO-OPEN APP', 'Choose an app');
+    assert.equal(await screenOf(page), 'all');
+    assert.match(await toastOf(page), /Press Menu on the app/);
+  });
+});
+
+test('System settings and Network settings open the system screens and say how to come back', T, async () => {
+  await withPage({}, async ({ page, logs }) => {
+    await openSettings(page);
+    await pick(page, 'STOCK APPS & SYSTEM', 'System settings');
+    await sawLog(logs, 'system settings');
+    assert.match(await toastOf(page), /Fire TV settings.*Back/);
+    await pick(page, 'STOCK APPS & SYSTEM', 'Network settings');
+    await sawLog(logs, 'network settings');
+    assert.match(await toastOf(page), /network settings.*Back/);
+    assert.equal(await screenOf(page), 'settings');
+  });
+});

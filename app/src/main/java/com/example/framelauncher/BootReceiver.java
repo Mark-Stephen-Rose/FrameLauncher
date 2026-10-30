@@ -10,5 +10,6 @@ public class BootReceiver extends BroadcastReceiver {
         if (i == null || !Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) return;
         HomeService.setStockMode(c, false);   // a restart always starts back in Frame Launcher
         if (HomeService.prefs(c).getBoolean(HomeService.KEY_TAKEOVER, true)) HomeService.openFrame(c);
+        AutoOpen.runSoon(c);   // the chosen app (a VPN app, say), if one is set
     }
 }

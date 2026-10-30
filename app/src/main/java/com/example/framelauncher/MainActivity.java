@@ -541,10 +541,34 @@ public class MainActivity extends Activity {
             }});
         }
 
-        @JavascriptInterface public void settings() {
+        /* The Fire TV settings screens are drawn by the stock launcher, which Home takeover would send straight back to
+           Frame Launcher (the screen flashed up and bounced back). So leave the stock launcher alone while they are open;
+           Back returns here and turns takeover back on. */
+        private void openSystem(final String action) {
+            HomeService.setStockMode(MainActivity.this, true);
             runOnUiThread(new Runnable() { public void run() {
-                try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { }
+                try { startActivity(new Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+                catch (Exception ex) { HomeService.setStockMode(MainActivity.this, false); }
             }});
         }
+
+        @JavascriptInterface public void settings() { openSystem(Settings.ACTION_SETTINGS); }
+
+        @JavascriptInterface public void network() { openSystem(Settings.ACTION_WIFI_SETTINGS); }
+
+        /* Auto-open app: opened at start-up and on every wake, then Frame Launcher comes back after a few seconds. */
+        @JavascriptInterface public String getAutoApp() { return AutoOpen.app(MainActivity.this); }
+
+        @JavascriptInterface public void setAutoApp(String pkg) {
+            HomeService.prefs(MainActivity.this).edit().putString(AutoOpen.KEY_APP, pkg == null ? "" : pkg).apply();
+        }
+
+        @JavascriptInterface public int getAutoSecs() { return AutoOpen.secs(MainActivity.this); }
+
+        @JavascriptInterface public void setAutoSecs(int s) {
+            HomeService.prefs(MainActivity.this).edit().putInt(AutoOpen.KEY_SECS, s).apply();
+        }
+
+        @JavascriptInterface public boolean runAutoApp() { return AutoOpen.run(MainActivity.this, true); }
     }
 }
